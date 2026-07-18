@@ -1,0 +1,15 @@
+{
+  "test_mae_days": 14.94,
+  "test_rmse_days": 20.79,
+  "epochs_trained": 33,
+  "training_time_hours": 0.08,
+  "mlflow_run_id": "0bfeb27cac9445a587cb8d03487b02d2",
+  "status": "PASS",
+  "xgb_accuracy": 0.6212,
+  "xgb_precision": 0.5349,
+  "xgb_recall": 0.2664,
+  "xgb_f1": 0.3557,
+  "xgb_auc_roc": 0.6375,
+  "baseline_lr_accuracy": 0.6242,
+  "baseline_rf_accuracy": 0.5697
+}

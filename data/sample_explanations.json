@@ -1,0 +1,438 @@
+{
+  "low_risk": {
+    "win_probability": 0.6419669389724731,
+    "waterfall": {
+      "base_value": -0.43446028232574463,
+      "output_value": 0.5839113754045684,
+      "features": [
+        {
+          "name": "agent's historical win rate",
+          "label": 1.4250000715255737,
+          "shap": 0.39774006605148315
+        },
+        {
+          "name": "product complexity",
+          "label": -1.2032030820846558,
+          "shap": 0.36232250928878784
+        },
+        {
+          "name": "month engaged",
+          "label": 1.7659422159194946,
+          "shap": 0.07546129077672958
+        },
+        {
+          "name": "assigned sales agent",
+          "label": "Mike Torres",
+          "shap": 0.07256312578101642
+        },
+        {
+          "name": "product's historical win rate",
+          "label": 1.1139569282531738,
+          "shap": 0.05829969048500061
+        }
+      ],
+      "other_features_combined_shap": 0.051984975347295403
+    },
+    "force_plot": {
+      "base_value": -0.43446028232574463,
+      "output_value": 0.5839113754045684,
+      "features": [
+        {
+          "name": "day of week engaged",
+          "label": -1.0005745887756348,
+          "shap": 0.008502953685820103
+        },
+        {
+          "name": "month engaged",
+          "label": 1.7659422159194946,
+          "shap": 0.07546129077672958
+        },
+        {
+          "name": "quarter engaged",
+          "label": 1.4659490585327148,
+          "shap": 0.0028328164480626583
+        },
+        {
+          "name": "agent's historical win rate",
+          "label": 1.4250000715255737,
+          "shap": 0.39774006605148315
+        },
+        {
+          "name": "agent's average deal size",
+          "label": -0.015659596771001816,
+          "shap": 0.005973071791231632
+        },
+        {
+          "name": "agent's historical deal velocity",
+          "label": -0.7091606259346008,
+          "shap": 0.022869620472192764
+        },
+        {
+          "name": "product complexity",
+          "label": -1.2032030820846558,
+          "shap": 0.36232250928878784
+        },
+        {
+          "name": "product's historical win rate",
+          "label": 1.1139569282531738,
+          "shap": 0.05829969048500061
+        },
+        {
+          "name": "product category",
+          "label": "Starter Pack",
+          "shap": 0.011806512949988246
+        },
+        {
+          "name": "assigned sales agent",
+          "label": "Mike Torres",
+          "shap": 0.07256312578101642
+        }
+      ],
+      "positives": [
+        {
+          "name": "day of week engaged",
+          "label": -1.0005745887756348,
+          "shap": 0.008502953685820103
+        },
+        {
+          "name": "month engaged",
+          "label": 1.7659422159194946,
+          "shap": 0.07546129077672958
+        },
+        {
+          "name": "quarter engaged",
+          "label": 1.4659490585327148,
+          "shap": 0.0028328164480626583
+        },
+        {
+          "name": "agent's historical win rate",
+          "label": 1.4250000715255737,
+          "shap": 0.39774006605148315
+        },
+        {
+          "name": "agent's average deal size",
+          "label": -0.015659596771001816,
+          "shap": 0.005973071791231632
+        },
+        {
+          "name": "agent's historical deal velocity",
+          "label": -0.7091606259346008,
+          "shap": 0.022869620472192764
+        },
+        {
+          "name": "product complexity",
+          "label": -1.2032030820846558,
+          "shap": 0.36232250928878784
+        },
+        {
+          "name": "product's historical win rate",
+          "label": 1.1139569282531738,
+          "shap": 0.05829969048500061
+        },
+        {
+          "name": "product category",
+          "label": "Starter Pack",
+          "shap": 0.011806512949988246
+        },
+        {
+          "name": "assigned sales agent",
+          "label": "Mike Torres",
+          "shap": 0.07256312578101642
+        }
+      ],
+      "negatives": []
+    },
+    "nl_explanation": "Win probability 64.2%. Positive factors: [agent's historical win rate, product complexity, month engaged]. Risk factors: [None]."
+  },
+  "moderate_risk": {
+    "win_probability": 0.4999349117279053,
+    "waterfall": {
+      "base_value": -0.43446028232574463,
+      "output_value": -0.0002602363529149443,
+      "features": [
+        {
+          "name": "agent's historical win rate",
+          "label": 1.5254348516464233,
+          "shap": 0.34665873646736145
+        },
+        {
+          "name": "agent's average deal size",
+          "label": 1.7339500188827515,
+          "shap": 0.061803895980119705
+        },
+        {
+          "name": "product complexity",
+          "label": 0.02086479403078556,
+          "shap": 0.03275574371218681
+        },
+        {
+          "name": "agent's historical deal velocity",
+          "label": -0.5020243525505066,
+          "shap": 0.019779179245233536
+        },
+        {
+          "name": "day of week engaged",
+          "label": -1.4993236064910889,
+          "shap": -0.01858806423842907
+        }
+      ],
+      "other_features_combined_shap": -0.00820944519364275
+    },
+    "force_plot": {
+      "base_value": -0.43446028232574463,
+      "output_value": -0.0002602363529149443,
+      "features": [
+        {
+          "name": "day of week engaged",
+          "label": -1.4993236064910889,
+          "shap": -0.01858806423842907
+        },
+        {
+          "name": "month engaged",
+          "label": -1.2641981840133667,
+          "shap": -0.0034508160315454006
+        },
+        {
+          "name": "quarter engaged",
+          "label": -1.3034987449645996,
+          "shap": -0.002834425074979663
+        },
+        {
+          "name": "agent's historical win rate",
+          "label": 1.5254348516464233,
+          "shap": 0.34665873646736145
+        },
+        {
+          "name": "agent's average deal size",
+          "label": 1.7339500188827515,
+          "shap": 0.061803895980119705
+        },
+        {
+          "name": "agent's historical deal velocity",
+          "label": -0.5020243525505066,
+          "shap": 0.019779179245233536
+        },
+        {
+          "name": "product complexity",
+          "label": 0.02086479403078556,
+          "shap": 0.03275574371218681
+        },
+        {
+          "name": "product's historical win rate",
+          "label": 0.14597216248512268,
+          "shap": -0.009125389158725739
+        },
+        {
+          "name": "product category",
+          "label": "Analytics Pro",
+          "shap": -0.004237043729517609
+        },
+        {
+          "name": "assigned sales agent",
+          "label": "Sarah Chen",
+          "shap": 0.01143822880112566
+        }
+      ],
+      "positives": [
+        {
+          "name": "agent's historical win rate",
+          "label": 1.5254348516464233,
+          "shap": 0.34665873646736145
+        },
+        {
+          "name": "agent's average deal size",
+          "label": 1.7339500188827515,
+          "shap": 0.061803895980119705
+        },
+        {
+          "name": "agent's historical deal velocity",
+          "label": -0.5020243525505066,
+          "shap": 0.019779179245233536
+        },
+        {
+          "name": "product complexity",
+          "label": 0.02086479403078556,
+          "shap": 0.03275574371218681
+        },
+        {
+          "name": "assigned sales agent",
+          "label": "Sarah Chen",
+          "shap": 0.01143822880112566
+        }
+      ],
+      "negatives": [
+        {
+          "name": "day of week engaged",
+          "label": -1.4993236064910889,
+          "shap": -0.01858806423842907
+        },
+        {
+          "name": "month engaged",
+          "label": -1.2641981840133667,
+          "shap": -0.0034508160315454006
+        },
+        {
+          "name": "quarter engaged",
+          "label": -1.3034987449645996,
+          "shap": -0.002834425074979663
+        },
+        {
+          "name": "product's historical win rate",
+          "label": 0.14597216248512268,
+          "shap": -0.009125389158725739
+        },
+        {
+          "name": "product category",
+          "label": "Analytics Pro",
+          "shap": -0.004237043729517609
+        }
+      ]
+    },
+    "nl_explanation": "Win probability 50.0%. Positive factors: [agent's historical win rate, agent's average deal size, product complexity]. Risk factors: [day of week engaged]."
+  },
+  "high_risk": {
+    "win_probability": 0.17284603416919708,
+    "waterfall": {
+      "base_value": -0.43446028232574463,
+      "output_value": -1.565590603138844,
+      "features": [
+        {
+          "name": "product complexity",
+          "label": 1.2449326515197754,
+          "shap": -0.48157715797424316
+        },
+        {
+          "name": "agent's historical win rate",
+          "label": -1.4724725484848022,
+          "shap": -0.405099481344223
+        },
+        {
+          "name": "agent's average deal size",
+          "label": -0.8662164211273193,
+          "shap": -0.060338594019412994
+        },
+        {
+          "name": "assigned sales agent",
+          "label": "Anita Rao",
+          "shap": -0.05125202248018468
+        },
+        {
+          "name": "product's historical win rate",
+          "label": -1.3214272260665894,
+          "shap": -0.04985637217760086
+        }
+      ],
+      "other_features_combined_shap": -0.08300669281743467
+    },
+    "force_plot": {
+      "base_value": -0.43446028232574463,
+      "output_value": -1.565590603138844,
+      "features": [
+        {
+          "name": "day of week engaged",
+          "label": 1.4931702613830566,
+          "shap": -0.027804184705018997
+        },
+        {
+          "name": "month engaged",
+          "label": -1.5672122240066528,
+          "shap": -0.019794564694166183
+        },
+        {
+          "name": "quarter engaged",
+          "label": -1.3034987449645996,
+          "shap": -0.008770783431828022
+        },
+        {
+          "name": "agent's historical win rate",
+          "label": -1.4724725484848022,
+          "shap": -0.405099481344223
+        },
+        {
+          "name": "agent's average deal size",
+          "label": -0.8662164211273193,
+          "shap": -0.060338594019412994
+        },
+        {
+          "name": "agent's historical deal velocity",
+          "label": 0.995642900466919,
+          "shap": -0.018039856106042862
+        },
+        {
+          "name": "product complexity",
+          "label": 1.2449326515197754,
+          "shap": -0.48157715797424316
+        },
+        {
+          "name": "product's historical win rate",
+          "label": -1.3214272260665894,
+          "shap": -0.04985637217760086
+        },
+        {
+          "name": "product category",
+          "label": "Enterprise Suite",
+          "shap": -0.008597303880378604
+        },
+        {
+          "name": "assigned sales agent",
+          "label": "Anita Rao",
+          "shap": -0.05125202248018468
+        }
+      ],
+      "positives": [],
+      "negatives": [
+        {
+          "name": "day of week engaged",
+          "label": 1.4931702613830566,
+          "shap": -0.027804184705018997
+        },
+        {
+          "name": "month engaged",
+          "label": -1.5672122240066528,
+          "shap": -0.019794564694166183
+        },
+        {
+          "name": "quarter engaged",
+          "label": -1.3034987449645996,
+          "shap": -0.008770783431828022
+        },
+        {
+          "name": "agent's historical win rate",
+          "label": -1.4724725484848022,
+          "shap": -0.405099481344223
+        },
+        {
+          "name": "agent's average deal size",
+          "label": -0.8662164211273193,
+          "shap": -0.060338594019412994
+        },
+        {
+          "name": "agent's historical deal velocity",
+          "label": 0.995642900466919,
+          "shap": -0.018039856106042862
+        },
+        {
+          "name": "product complexity",
+          "label": 1.2449326515197754,
+          "shap": -0.48157715797424316
+        },
+        {
+          "name": "product's historical win rate",
+          "label": -1.3214272260665894,
+          "shap": -0.04985637217760086
+        },
+        {
+          "name": "product category",
+          "label": "Enterprise Suite",
+          "shap": -0.008597303880378604
+        },
+        {
+          "name": "assigned sales agent",
+          "label": "Anita Rao",
+          "shap": -0.05125202248018468
+        }
+      ]
+    },
+    "nl_explanation": "Win probability 17.3%. Positive factors: [None]. Risk factors: [product complexity, agent's historical win rate, agent's average deal size]."
+  }
+}

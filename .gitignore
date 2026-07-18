@@ -1,0 +1,82 @@
+# Environments
+.env
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# VS Code / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specifics
+.env
+*.env
+postgres_data/
+redis_data/
+
+# ML model binaries — distribute via GitHub Releases, not git
+*.joblib
+*.h5
+*.keras
+*.pkl
+*.pickle
+mlruns/
+mlflow/mlflow.db
+
+# Data files — too large / contain PII
+data/*.csv
+data/*.parquet
+
+# Frontend build artefacts
+frontend/node_modules/
+frontend/dist/
+frontend/.vercel/
+
+# Scratch / temp files
+scratch/
+reformat.py
+fix_ts.py

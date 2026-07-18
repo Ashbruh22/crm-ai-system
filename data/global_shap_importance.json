@@ -1,0 +1,52 @@
+[
+  {
+    "feature": "num__product_category_complexity_score",
+    "mean_abs_shap": 0.29089343547821045,
+    "pct_of_total": 0.4392800295023483
+  },
+  {
+    "feature": "num__agent_win_rate",
+    "mean_abs_shap": 0.22920460999011993,
+    "pct_of_total": 0.34612334126074146
+  },
+  {
+    "feature": "sales_agent",
+    "mean_abs_shap": 0.03185427046264522,
+    "pct_of_total": 0.04810333669305068
+  },
+  {
+    "feature": "num__product_win_rate",
+    "mean_abs_shap": 0.031815242022275925,
+    "pct_of_total": 0.04804439959669212
+  },
+  {
+    "feature": "num__agent_avg_deal_value",
+    "mean_abs_shap": 0.025773363187909126,
+    "pct_of_total": 0.03892051989054775
+  },
+  {
+    "feature": "num__agent_deal_velocity",
+    "mean_abs_shap": 0.018280763179063797,
+    "pct_of_total": 0.027605896899746667
+  },
+  {
+    "feature": "num__month_engaged",
+    "mean_abs_shap": 0.012512666173279285,
+    "pct_of_total": 0.01889545687655397
+  },
+  {
+    "feature": "num__day_of_week_engaged",
+    "mean_abs_shap": 0.010626043193042278,
+    "pct_of_total": 0.01604645549893299
+  },
+  {
+    "feature": "product",
+    "mean_abs_shap": 0.00900193490087986,
+    "pct_of_total": 0.01359387922362699
+  },
+  {
+    "feature": "num__quarter_engaged",
+    "mean_abs_shap": 0.002242679474875331,
+    "pct_of_total": 0.0033866845577590924
+  }
+]

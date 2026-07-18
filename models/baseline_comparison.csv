@@ -1,0 +1,4 @@
+model,mae_days,rmse_days
+LinearRegression,14.79,20.45
+XGBRegressor,15.02,20.83
+LSTM_Proposed,14.94,20.79

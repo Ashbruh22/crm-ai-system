@@ -1,0 +1,19 @@
+{
+  "problem": 2,
+  "data_source": "SIMULATED (calibrated stage-dwell + activity-rate params from real training split; per-deal sequences via independent stochastic sampling)",
+  "leakage_probe_pass1_original_pct": 75.4,
+  "leakage_probe_pass2_corrected_pct": 59.3,
+  "leakage_probe_pass2_result": "FAIL",
+  "actual_epochs": 59,
+  "best_epoch": 44,
+  "wall_clock_seconds": 483.4,
+  "overall_mae_days": 18.04,
+  "overall_rmse_days": 25.32,
+  "mae_by_cutoff_bucket": {
+    "Day 0-10": 18.42,
+    "Day 11-30": 17.98,
+    "Day 31-60": 16.92
+  },
+  "n_synthetic_deals": 5000,
+  "disclosure_for_paper": "This model is trained on a stochastically simulated event-log dataset, calibrated to match aggregate statistics observed in the source CRM data, due to the absence of granular event-level/stage-transition data in the available dataset (sales_pipeline.csv contains only final-state rows). Production deployment would replace this simulator with real event streams via the Salesforce/HubSpot webhook + Kafka pipeline specified in PRD Section 2.4."
+}
