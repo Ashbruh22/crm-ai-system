@@ -1,0 +1,14 @@
+{
+  "activity_params": {
+    "('Analytics Pro', 0)": 1.0,
+    "('Analytics Pro', 1)": 1.5,
+    "('Analytics Pro', 2)": 2.0,
+    "('Enterprise Suite', 0)": 1.3,
+    "('Enterprise Suite', 1)": 1.9500000000000002,
+    "('Enterprise Suite', 2)": 2.6,
+    "('Starter Pack', 0)": 0.8,
+    "('Starter Pack', 1)": 1.2000000000000002,
+    "('Starter Pack', 2)": 1.6
+  },
+  "global_rate": 1.5
+}
