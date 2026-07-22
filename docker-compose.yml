@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    ports: 
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app:ro
+      - ./ml:/app/ml:ro        # model artifacts — read-only
+      - ./data:/app/data:ro
+    restart: unless-stopped
+
+  db:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: crm_ai
+      POSTGRES_USER: ${DB_USER:-crm_ai_app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-crm_ai_db_password_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-crm_ai_app} -d crm_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    ports: 
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on: 
+      - api
+    restart: unless-stopped
+
+  celery-worker:
+    build: .
+    command: celery -A ml.celery_app worker --loglevel=info --concurrency=2
+    env_file: .env
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - ./app:/app/app:ro
+      - ./ml:/app/ml
+      - ./data:/app/data
+    restart: unless-stopped
+
+  celery-beat:
+    build: .
+    command: celery -A ml.celery_app beat --loglevel=info -s /app/celerybeat-schedule-dir/celerybeat-schedule
+    env_file: .env
+    depends_on:
+      - redis
+      - celery-worker
+    volumes:
+      - ./app:/app/app:ro
+      - ./ml:/app/ml
+      - ./data:/app/data
+      - celery_beat_data:/app/celerybeat-schedule-dir
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  celery_beat_data:

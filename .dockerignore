@@ -1,0 +1,11 @@
+.venv
+../.venv_temp
+.git
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.coverage
+*.log
+scratch
+.system_generated
