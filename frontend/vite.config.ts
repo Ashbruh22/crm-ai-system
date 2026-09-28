@@ -6,13 +6,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:80',
-        changeOrigin: true,
-      }
-    }
   },
+  // The app calls the ML service directly at VITE_API_URL, and the service
+  // allows this origin via ALLOWED_ORIGINS. The old dev proxy pointed at
+  // nginx on :80, which is not part of the hosted topology.
   build: {
     rollupOptions: {
       output: {
