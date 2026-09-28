@@ -19,8 +19,15 @@ onnxruntime==1.20.1
 # shap <0.51 cannot parse xgboost 3.2's base_score, which it now serialises as
 # '[3.8455883E-1]' rather than a scalar, raising ValueError in TreeExplainer.
 shap==0.51.0
-numpy==1.26.4
+# shap 0.51 pulls numba>=0.62, which requires numpy>=2. Pinning numpy 1.26 here
+# makes the install unresolvable. The phase-1 artifacts were built and verified
+# under 2.4.6; metrics were identical on 1.26.4, so this is a packaging
+# constraint, not a modelling one.
+numpy==2.4.6
 pandas==2.3.3
+# Transitive via shap, pinned so the image is reproducible. Nothing imports it
+# directly any more: feature engineering is plain code in app/features/build.py.
+scikit-learn==1.5.2
 
 # ─── FastAPI / ASGI stack ────────────────────────────────────────────────────
 fastapi==0.125.0
@@ -56,3 +63,7 @@ requests==2.32.4
 pytest==8.4.1
 pytest-asyncio==1.0.0
 anyio==4.9.0
+# Local test runs use SQLite + a fake Redis so the suite needs no containers
+# (spec section 11). CI still runs a PostgreSQL service container.
+aiosqlite==0.20.0
+fakeredis==2.26.1

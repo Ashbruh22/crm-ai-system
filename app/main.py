@@ -1,100 +1,161 @@
+"""FastAPI app factory.
+
+Phase 2 changes from the original startup path:
+
+* **No TensorFlow.** The old module scope did ``import tensorflow as tf`` and
+  loaded a ``.keras`` file plus ``ml/xgboost_model.joblib`` — neither of which
+  was committed, so a fresh clone could not boot. Models now come from
+  ``artifacts/`` via ``app.models.registry``: XGBoost from native JSON, the LSTM
+  from ONNX Runtime.
+* **CORS is restricted** to ``ALLOWED_ORIGINS``. It was ``allow_origins=["*"]``
+  with ``allow_credentials=True``, which browsers reject and the spec forbids.
+* **The feature schema is validated at startup** and the app refuses to boot on
+  a mismatch.
+* ``/healthz`` reports model, DB, and Redis status (``/health`` and ``/ready``
+  are kept as aliases so existing probes keep working).
+"""
+
+from __future__ import annotations
+
+import logging
 import os
-import joblib
-import tensorflow as tf
 from contextlib import asynccontextmanager
+
+import redis.asyncio as redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
-import redis.asyncio as redis
 
 from app.config import settings
 from app.middleware import RequestIDMiddleware
-from app.routers import predict, explain, recommendations, admin, auth, crm
+from app.models.registry import ArtifactError, ModelRegistry, registry
+from app.routers import deals, meta
+
+log = logging.getLogger("crm_ai")
+
+# Routers still on the pre-phase-1 artifacts (ml/pipeline.joblib, the Keras
+# model) and the legacy opportunities/predictions tables. They cannot load
+# their models any more, so mounting them would break startup. Each is restored
+# against the new registry in the phase noted:
+#   predict.py, explain.py  -> phase 3 (scoring + SHAP + cache)
+#   recommendations.py      -> phase 4 (NBA rule engine)
+#   crm.py                  -> phase 5 (MessageBus + signed webhook)
+#   admin.py, auth.py       -> phase 8 (security pass)
+LEGACY_ROUTERS_DISABLED = (
+    "predict", "explain", "recommendations", "crm", "admin", "auth",
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load ML artifacts
-    base_dir = os.path.dirname(os.path.dirname(__file__))
-    
-    # XGBoost
-    xgb_path = os.path.join(base_dir, 'ml', 'xgboost_model.joblib')
-    app.state.xgboost_model = joblib.load(xgb_path)
-    
-    # Pipeline
-    pipeline_path = os.path.join(base_dir, 'ml', 'pipeline.joblib')
-    app.state.pipeline = joblib.load(pipeline_path)
-    
-    # LSTM Problem 2 Model
-    lstm_path = os.path.join(base_dir, 'ml', 'lstm_problem2_live_reforecast.keras')
-    app.state.lstm_model = tf.keras.models.load_model(lstm_path)
-    
-    # Assertion as requested: fail loudly if input shape is wrong
-    expected_shape = (None, 60, 7)
-    actual_shape = app.state.lstm_model.input_shape
-    assert actual_shape == expected_shape, f"CRITICAL: LSTM model shape mismatch. Expected {expected_shape}, got {actual_shape}."
-    
-    # Initialize Redis connection
-    app.state.redis = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
-    
+    # --- models ---------------------------------------------------------
+    app.state.registry = registry
+    registry.artifact_dir = settings.ARTIFACT_DIR
+    try:
+        registry.load()
+        if settings.MODEL_VERSION:
+            registry.model_version = settings.MODEL_VERSION
+        log.info("artifacts loaded: %s", registry.health())
+    except ArtifactError:
+        if settings.REQUIRE_ARTIFACTS:
+            # Deliberate: serving a model whose features have drifted produces
+            # confidently wrong explanations, which is worse than not starting.
+            raise
+        log.warning("artifacts unavailable; continuing without models")
+        app.state.registry = ModelRegistry(artifact_dir=settings.ARTIFACT_DIR)
+
+    # --- redis ----------------------------------------------------------
+    app.state.redis = redis.from_url(
+        settings.REDIS_URL, encoding="utf-8", decode_responses=True
+    )
+
+    # --- database -------------------------------------------------------
+    if settings.SEED_ON_STARTUP:
+        try:
+            from app.db.session import SessionLocal
+            from app.seed import seed_if_empty
+
+            async with SessionLocal() as session:
+                result = await seed_if_empty(session, settings.SYNTHETIC_DATA_DIR)
+            log.info("seed: %s", result)
+        except Exception as exc:  # noqa: BLE001 - never block boot on seeding
+            log.warning("seeding skipped: %s", exc)
+
     yield
-    
-    # Cleanup
+
     await app.state.redis.aclose()
 
-app = FastAPI(
-    title="CRM AI System",
-    description="Phase 4 Production API Stack",
-    version="1.0.0",
-    lifespan=lifespan,
-    docs_url="/docs" if settings.DOCS_ENABLED else None,
-    redoc_url=None
-)
 
-# Middleware
-app.add_middleware(RequestIDMiddleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="CRM AI Core",
+        description=(
+            "Real-time deal scoring, SHAP explanations, and next-best-action "
+            "recommendations. Runs entirely on synthetic data."
+        ),
+        version="2.0.0",
+        lifespan=lifespan,
+        docs_url="/docs" if settings.DOCS_ENABLED else None,
+        redoc_url=None,
+    )
 
-# Prometheus Metrics
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+    app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    )
 
-# Include Routers
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
-app.include_router(predict.router, prefix="/api/v1/predict", tags=["Prediction"])
-app.include_router(explain.router, prefix="/api/v1/explain", tags=["Explainability"])
-app.include_router(recommendations.router, prefix="/api/v1/recommendations", tags=["Recommendations"])
-app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
-app.include_router(crm.router, prefix="/api/v1/crm", tags=["CRM Integration"])
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
-@app.get("/health", tags=["System"])
-async def health_check():
-    """Liveness probe. Returns 200 OK immediately without checking dependencies."""
-    return {"status": "ok"}
+    app.include_router(deals.router, prefix="/api/deals", tags=["Deals"])
+    app.include_router(meta.router, prefix="/api/meta", tags=["Meta"])
 
-@app.get("/ready", tags=["System"])
-async def readiness_check():
-    """Readiness probe. Checks DB and Redis connectivity."""
-    db_status = "ok"
-    redis_status = "ok"
-    
-    # Check Redis
-    try:
-        await app.state.redis.ping()
-    except Exception:
-        redis_status = "error"
-        
-    # Check DB
-    try:
-        from app.dependencies import engine
-        async with engine.connect() as conn:
-            pass # Just connecting is enough for a basic check
-    except Exception:
-        db_status = "error"
-        
-    status = "ok" if db_status == "ok" and redis_status == "ok" else "error"
-    return {"status": status, "db_status": db_status, "redis_status": redis_status}
+    _register_health(app)
+    return app
+
+
+def _register_health(app: FastAPI) -> None:
+    async def healthz() -> dict:
+        """Status of models, database, and Redis."""
+        reg: ModelRegistry = getattr(app.state, "registry", registry)
+
+        redis_status = "ok"
+        try:
+            await app.state.redis.ping()
+        except Exception as exc:  # noqa: BLE001
+            redis_status = f"error: {type(exc).__name__}"
+
+        db_status = "ok"
+        try:
+            from sqlalchemy import text
+
+            from app.db.session import engine
+
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        except Exception as exc:  # noqa: BLE001
+            db_status = f"error: {type(exc).__name__}"
+
+        models = reg.health()
+        healthy = (
+            redis_status == "ok" and db_status == "ok" and models["xgb_loaded"]
+        )
+        return {
+            "status": "ok" if healthy else "degraded",
+            "version": app.version,
+            "models": models,
+            "db": db_status,
+            "redis": redis_status,
+            "synthetic_data": True,
+        }
+
+    app.add_api_route("/healthz", healthz, methods=["GET"], tags=["System"])
+    # Kept so existing Docker/Render probes do not break.
+    app.add_api_route("/health", healthz, methods=["GET"], tags=["System"])
+    app.add_api_route("/ready", healthz, methods=["GET"], tags=["System"])
+
+
+app = create_app()

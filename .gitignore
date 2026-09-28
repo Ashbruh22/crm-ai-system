@@ -98,3 +98,7 @@ data/synthetic/activities.csv
 # running the generator on the deploy host is not worth the dependency.
 !data/synthetic/live_deals.csv
 !data/synthetic/live_activities.csv
+
+# Local SQLite database from a containerless run
+demo_local.db
+*.db-journal

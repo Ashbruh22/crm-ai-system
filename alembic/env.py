@@ -13,6 +13,10 @@ from alembic import context
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.models.db import Base
+
+# Importing the demo models registers them on the shared Base metadata, so
+# autogenerate sees deals/activities/scores/actions/processed_events too.
+import app.db.models  # noqa: F401
 # Import config to ensure env vars are loaded
 from app.config import settings
 
