@@ -54,11 +54,11 @@ outcome never leaks into a training feature.
 
 | Metric | Value |
 |---|---|
-| Accuracy | 0.735 |
-| AUC-ROC | 0.789 |
-| Precision | 0.711 |
-| Recall | 0.526 |
-| F1 | 0.605 |
+| Accuracy | 0.738 |
+| AUC-ROC | 0.788 |
+| Precision | 0.709 |
+| Recall | 0.539 |
+| F1 | 0.613 |
 | Brier score | 0.180 |
 | Test rows | 400 |
 
@@ -97,18 +97,18 @@ leaked the label, not that the model was good.
 
 | # | Driver | Mean abs SHAP |
 |---|---|---|
-| 1 | Champion identified | 0.5131 |
-| 2 | 7-day silence gaps | 0.4535 |
-| 3 | Email reply rate | 0.2640 |
-| 4 | Days since last touch | 0.2126 |
-| 5 | Meetings held | 0.1366 |
-| 6 | Deal size ($k) | 0.1352 |
-| 7 | Activities per week | 0.1302 |
-| 8 | Emails replied to | 0.1290 |
-| 9 | Demos delivered | 0.1157 |
-| 10 | Total activities | 0.0801 |
-| 11 | Rep historical win rate | 0.0662 |
-| 12 | Days open | 0.0614 |
+| 1 | Champion identified | 0.5291 |
+| 2 | 7-day silence gaps | 0.4300 |
+| 3 | Email reply rate | 0.2582 |
+| 4 | Days since last touch | 0.2341 |
+| 5 | Meetings held | 0.1370 |
+| 6 | Emails replied to | 0.1304 |
+| 7 | Deal size ($k) | 0.1251 |
+| 8 | Demos delivered | 0.1132 |
+| 9 | Activities per week | 0.1092 |
+| 10 | Total activities | 0.0747 |
+| 11 | Rep historical win rate | 0.0693 |
+| 12 | Days open | 0.0552 |
 
 ## Limitations
 

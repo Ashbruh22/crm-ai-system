@@ -11,6 +11,15 @@ pipeline to show without a manual step.
 Only ``data/synthetic/live_deals.csv`` and ``live_activities.csv`` are read —
 the 60 open deals. The 2,000 closed training deals stay out of the demo
 database; they are training input, not pipeline.
+
+Timeline anchoring
+------------------
+The generator pins its world to a fixed ``WORLD_NOW`` so the CSVs are
+reproducible from a seed. Loaded verbatim, though, every deal ages in real time:
+a month after generation the whole pipeline looks abandoned and every deal draws
+a "gone quiet" recommendation. Seeding therefore shifts every timestamp by
+``now - world_now``, preserving the relative shape of each deal's history while
+keeping the demo current. Set ``anchor_to_now=False`` to load the raw dates.
 """
 
 from __future__ import annotations
@@ -18,8 +27,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import delete, func, select
@@ -46,6 +56,29 @@ def _read_csv(path: str) -> list[dict]:
         return list(csv.DictReader(fh))
 
 
+def _world_now(data_dir: str) -> datetime | None:
+    """The generator's fixed 'now', from the manifest it writes alongside."""
+    path = os.path.join(data_dir, "manifest.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as fh:
+        raw = json.load(fh).get("world_now")
+    return _parse_dt(raw) if raw else None
+
+
+def _offset(data_dir: str, anchor_to_now: bool) -> timedelta:
+    if not anchor_to_now:
+        return timedelta(0)
+    world_now = _world_now(data_dir)
+    if world_now is None:
+        return timedelta(0)
+    return datetime.now(timezone.utc) - world_now
+
+
+def _shift(value: datetime | None, delta: timedelta) -> datetime | None:
+    return None if value is None else value + delta
+
+
 def load_live_rows(data_dir: str = SYNTHETIC_DIR) -> tuple[list[dict], list[dict]]:
     deals_path = os.path.join(data_dir, "live_deals.csv")
     acts_path = os.path.join(data_dir, "live_activities.csv")
@@ -68,9 +101,14 @@ async def clear_demo_tables(session: AsyncSession) -> None:
     await session.commit()
 
 
-async def seed(session: AsyncSession, data_dir: str = SYNTHETIC_DIR) -> dict:
+async def seed(
+    session: AsyncSession,
+    data_dir: str = SYNTHETIC_DIR,
+    anchor_to_now: bool = True,
+) -> dict:
     """Insert the live set. Assumes the demo tables are empty."""
     deal_rows, activity_rows = load_live_rows(data_dir)
+    delta = _offset(data_dir, anchor_to_now)
 
     for row in deal_rows:
         session.add(
@@ -83,9 +121,9 @@ async def seed(session: AsyncSession, data_dir: str = SYNTHETIC_DIR) -> dict:
                 stage=row["stage"],
                 source=row["source"],
                 owner_rep=row["owner_rep"],
-                created_at=_parse_dt(row["created_at"]),
-                expected_close=_parse_dt(row.get("expected_close")),
-                closed_at=_parse_dt(row.get("closed_at")),
+                created_at=_shift(_parse_dt(row["created_at"]), delta),
+                expected_close=_shift(_parse_dt(row.get("expected_close")), delta),
+                closed_at=_shift(_parse_dt(row.get("closed_at")), delta),
                 # Live deals are open and therefore unlabelled.
                 won=None,
             )
@@ -102,7 +140,7 @@ async def seed(session: AsyncSession, data_dir: str = SYNTHETIC_DIR) -> dict:
                 id=row["id"],
                 deal_id=row["deal_id"],
                 type=row["type"],
-                occurred_at=_parse_dt(row["occurred_at"]),
+                occurred_at=_shift(_parse_dt(row["occurred_at"]), delta),
                 origin="seed",
             )
         )
@@ -112,22 +150,36 @@ async def seed(session: AsyncSession, data_dir: str = SYNTHETIC_DIR) -> dict:
         "deals": len(deal_rows),
         "activities": len(activity_rows) - skipped,
         "skipped_orphan_activities": skipped,
+        "anchored_to_now": anchor_to_now,
+        "timeline_shift_days": round(delta.total_seconds() / 86400.0, 2),
     }
 
 
-async def seed_if_empty(session: AsyncSession, data_dir: str = SYNTHETIC_DIR) -> dict:
+async def seed_if_empty(
+    session: AsyncSession,
+    data_dir: str = SYNTHETIC_DIR,
+    anchor_to_now: bool = True,
+) -> dict:
     """Seed only when there is nothing there. Safe to call on every boot."""
     existing = await count_deals(session)
     if existing:
         return {"seeded": False, "existing_deals": existing}
-    result = await seed(session, data_dir)
+    result = await seed(session, data_dir, anchor_to_now)
     return {"seeded": True, **result}
 
 
-async def reset(session: AsyncSession, data_dir: str = SYNTHETIC_DIR) -> dict:
-    """Wipe and reload — what POST /api/admin/reset and the nightly job use."""
+async def reset(
+    session: AsyncSession,
+    data_dir: str = SYNTHETIC_DIR,
+    anchor_to_now: bool = True,
+) -> dict:
+    """Wipe and reload — what POST /api/admin/reset and the nightly job use.
+
+    Re-anchoring on every reset is why the nightly job keeps the demo looking
+    live rather than progressively abandoned.
+    """
     await clear_demo_tables(session)
-    result = await seed(session, data_dir)
+    result = await seed(session, data_dir, anchor_to_now)
     return {"reset": True, **result}
 
 

@@ -31,7 +31,8 @@ import numpy as np
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Activity, Deal, Score
+from app.agent import nba
+from app.db.models import Action, ActionStatus, Activity, Deal, Score
 from app.features.build import (
     FEATURE_LABELS,
     FEATURE_NAMES,
@@ -84,6 +85,7 @@ class ScoreResult:
     latency_ms: dict[str, float]
     cache_hit: bool
     features: dict[str, float] = field(default_factory=dict)
+    recommendations: list = field(default_factory=list)
     scored_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
@@ -98,6 +100,16 @@ class ScoreResult:
             "latency_ms": self.latency_ms,
             "cache_hit": self.cache_hit,
             "scored_at": self.scored_at.isoformat(),
+            "actions": [
+                {
+                    "rule_id": r.rule_id,
+                    "action_type": r.action_type,
+                    "reason": r.reason,
+                    "priority": r.priority,
+                    "urgency_score": r.urgency_score,
+                }
+                for r in self.recommendations
+            ],
         }
 
 
@@ -283,6 +295,10 @@ async def score_deal(
                 features=dict(zip(FEATURE_NAMES, vector.tolist())),
             )
 
+    # Captured before the new score is written, so R-SCORE-DROP can compare.
+    previous = await latest_score(session, deal_id)
+    previous_win_prob = previous.win_prob if previous else None
+
     win_prob, days_to_close, drivers, base = score_vector(
         registry, vector, sequence, timer
     )
@@ -300,20 +316,35 @@ async def score_deal(
         features=dict(zip(FEATURE_NAMES, vector.tolist())),
     )
 
-    if persist:
-        session.add(
-            Score(
-                deal_id=deal_id,
-                win_prob=win_prob,
-                days_to_close=days_to_close,
-                model_version=registry.model_version,
-                shap_top=drivers,
-                feature_hash=fhash,
-                latency_ms=None,  # filled in below, once total is known
-                cache_hit=False,
-                scored_at=result.scored_at,
-            )
+    recommendations = nba.recommend(
+        nba.context_from_score(
+            deal,
+            dict(zip(FEATURE_NAMES, vector.tolist())),
+            win_prob,
+            days_to_close,
+            drivers,
+            previous_win_prob=previous_win_prob,
         )
+    )
+    result.recommendations = recommendations
+    timer.stage("nba")
+
+    if persist:
+        score_row = Score(
+            deal_id=deal_id,
+            win_prob=win_prob,
+            days_to_close=days_to_close,
+            model_version=registry.model_version,
+            shap_top=drivers,
+            feature_hash=fhash,
+            latency_ms=None,  # set below, once the total is known
+            cache_hit=False,
+            scored_at=result.scored_at,
+        )
+        session.add(score_row)
+        # Flush so score_row.id exists for the actions' foreign key.
+        await session.flush()
+        await sync_actions(session, deal_id, recommendations, score_id=score_row.id)
 
     if redis is not None:
         await _cache_set(redis, key, result)
@@ -322,11 +353,8 @@ async def score_deal(
     result.latency_ms = timer.total()
 
     if persist:
-        # The Score row was added before the total was known; set it now, while
-        # the object is still pending in this session.
-        for obj in session.new:
-            if isinstance(obj, Score) and obj.feature_hash == fhash:
-                obj.latency_ms = result.latency_ms
+        # The Score row was created before the total was known.
+        score_row.latency_ms = result.latency_ms
         await session.commit()
 
     return result
@@ -371,6 +399,56 @@ async def invalidate_deal(redis, deal_id: str) -> int:
     except Exception:  # noqa: BLE001
         return removed
     return removed
+
+
+async def sync_actions(
+    session: AsyncSession,
+    deal_id: str,
+    recommendations: Sequence[nba.Recommendation],
+    score_id=None,
+) -> list[Action]:
+    """Write newly-fired recommendations to the ledger.
+
+    A rule that is already open for this deal is not re-inserted: re-scoring a
+    deal every time an activity lands would otherwise pile up duplicate advice.
+    The existing row stays, keeping its original created_at and whatever the
+    user did with it.
+
+    Nothing is auto-dismissed. A rule that stops firing leaves its action open,
+    because the ledger is an audit trail of what was recommended and when — the
+    user decides what happened to it.
+    """
+    open_rules = set(
+        (
+            await session.execute(
+                select(Action.rule_id).where(
+                    Action.deal_id == deal_id,
+                    Action.status == ActionStatus.suggested,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    created: list[Action] = []
+    for rec in recommendations:
+        if rec.rule_id in open_rules:
+            continue
+        action = Action(
+            deal_id=deal_id,
+            score_id=score_id,
+            rule_id=rec.rule_id,
+            action_type=rec.action_type,
+            reason=rec.reason,
+            priority=rec.priority,
+            urgency_score=rec.urgency_score,
+            status=ActionStatus.suggested,
+        )
+        session.add(action)
+        created.append(action)
+
+    return created
 
 
 async def latest_score(session: AsyncSession, deal_id: str) -> Score | None:

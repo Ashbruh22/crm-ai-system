@@ -17,13 +17,13 @@
   },
   "demo_models": {
     "win_probability": {
-      "accuracy": 0.735,
-      "auc_roc": 0.7891,
-      "precision": 0.7105,
-      "recall": 0.526,
-      "f1": 0.6045,
-      "brier": 0.1802,
-      "best_iteration": 69,
+      "accuracy": 0.7375,
+      "auc_roc": 0.7882,
+      "precision": 0.7094,
+      "recall": 0.539,
+      "f1": 0.6125,
+      "brier": 0.1805,
+      "best_iteration": 58,
       "n_train": 1600,
       "n_test": 400,
       "positive_rate_test": 0.385
@@ -60,62 +60,62 @@
     {
       "feature": "has_champion",
       "label": "Champion identified",
-      "mean_abs_shap": 0.51309
+      "mean_abs_shap": 0.52913
     },
     {
       "feature": "n_silence_gaps",
       "label": "7-day silence gaps",
-      "mean_abs_shap": 0.45352
+      "mean_abs_shap": 0.43002
     },
     {
       "feature": "reply_rate",
       "label": "Email reply rate",
-      "mean_abs_shap": 0.26401
+      "mean_abs_shap": 0.25817
     },
     {
       "feature": "days_since_last_activity",
       "label": "Days since last touch",
-      "mean_abs_shap": 0.21259
+      "mean_abs_shap": 0.23405
     },
     {
       "feature": "n_meetings",
       "label": "Meetings held",
-      "mean_abs_shap": 0.13656
-    },
-    {
-      "feature": "deal_size_k",
-      "label": "Deal size ($k)",
-      "mean_abs_shap": 0.13518
-    },
-    {
-      "feature": "activity_per_week",
-      "label": "Activities per week",
-      "mean_abs_shap": 0.13018
+      "mean_abs_shap": 0.137
     },
     {
       "feature": "n_emails_replied",
       "label": "Emails replied to",
-      "mean_abs_shap": 0.12901
+      "mean_abs_shap": 0.13041
+    },
+    {
+      "feature": "deal_size_k",
+      "label": "Deal size ($k)",
+      "mean_abs_shap": 0.12512
     },
     {
       "feature": "n_demos",
       "label": "Demos delivered",
-      "mean_abs_shap": 0.11567
+      "mean_abs_shap": 0.11316
+    },
+    {
+      "feature": "activity_per_week",
+      "label": "Activities per week",
+      "mean_abs_shap": 0.10917
     },
     {
       "feature": "activity_count",
       "label": "Total activities",
-      "mean_abs_shap": 0.08014
+      "mean_abs_shap": 0.07474
     },
     {
       "feature": "rep_win_rate",
       "label": "Rep historical win rate",
-      "mean_abs_shap": 0.06624
+      "mean_abs_shap": 0.06933
     },
     {
       "feature": "days_open",
       "label": "Days open",
-      "mean_abs_shap": 0.06145
+      "mean_abs_shap": 0.05521
     }
   ],
   "latency_ms": {

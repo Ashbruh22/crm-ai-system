@@ -1,11 +1,11 @@
 {
-  "accuracy": 0.735,
-  "auc_roc": 0.7891,
-  "precision": 0.7105,
-  "recall": 0.526,
-  "f1": 0.6045,
-  "brier": 0.1802,
-  "best_iteration": 69,
+  "accuracy": 0.7375,
+  "auc_roc": 0.7882,
+  "precision": 0.7094,
+  "recall": 0.539,
+  "f1": 0.6125,
+  "brier": 0.1805,
+  "best_iteration": 58,
   "n_train": 1600,
   "n_test": 400,
   "positive_rate_test": 0.385

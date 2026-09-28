@@ -75,6 +75,13 @@ PROGRESSION_TYPES = frozenset(
 #: Signals of risk.
 RISK_TYPES = frozenset({"discount_requested", "no_activity_7d"})
 
+#: Events that are not a contact with the buyer. ``no_activity_7d`` is a marker
+#: the pipeline writes when a week passes with nothing happening, so counting it
+#: as a "touch" would make a deal with eight logged weeks of silence look like it
+#: was contacted seven days ago — exactly inverting the signal that
+#: ``days_since_last_activity`` exists to carry.
+NON_CONTACT_TYPES = frozenset({"no_activity_7d"})
+
 # --- flat feature vector ---------------------------------------------------
 
 NUMERIC_FEATURES: tuple[str, ...] = (
@@ -209,11 +216,12 @@ def build_feature_vector(
     stage = deal.get("stage", STAGES[0])
     stage_ordinal = _stage_ordinal(stage)
 
-    if events:
-        last_at = events[-1]["occurred_at"]
+    contacts = [e for e in events if e["type"] not in NON_CONTACT_TYPES]
+    if contacts:
+        last_at = contacts[-1]["occurred_at"]
         days_since_last = max(0.0, (as_of - last_at).total_seconds() / 86400.0)
     else:
-        # Never touched: the whole life of the deal is silence.
+        # Never actually contacted: the whole life of the deal is silence.
         days_since_last = days_open
 
     n_sent = counts["email_sent"]

@@ -76,8 +76,9 @@ def test_known_deal_produces_expected_values():
     assert f["n_stakeholders"] == 2
     assert f["n_silence_gaps"] == 1
     assert f["activity_count"] == 7
-    # Last event was day 16, scored at day 20.
-    assert f["days_since_last_activity"] == pytest.approx(4.0)
+    # The last *event* is the day-16 silence marker, but that is not a contact:
+    # the last real touch was stakeholder_added on day 9, scored at day 20.
+    assert f["days_since_last_activity"] == pytest.approx(11.0)
     assert f["stage_ordinal"] == STAGES.index("Proposal")
     assert f["rep_win_rate"] == pytest.approx(0.55)
     assert f["industry_Technology"] == 1.0
@@ -168,3 +169,30 @@ def test_schema_declares_every_feature_with_a_label():
     assert all(f["label"] for f in schema["features"])
     assert schema["sequence"]["len"] == SEQ_LEN
     assert schema["sequence"]["padding"] == "pre"
+
+
+def test_silence_markers_do_not_count_as_a_touch():
+    """no_activity_7d is a marker the pipeline writes, not a contact.
+
+    Counting it would invert the feature: a deal with weeks of logged silence
+    would report a recent "last touch", which is the opposite of the truth and
+    silently disarms the go-quiet recommendation rules.
+    """
+    activities = [_act("email_replied", 2)]
+    activities += [_act("no_activity_7d", d) for d in range(9, 40)]
+
+    vec = build_feature_vector(_deal(), activities, as_of=CREATED + timedelta(days=41))
+    f = dict(zip(FEATURE_NAMES, vec))
+
+    # Last real contact was day 2, scored at day 41.
+    assert f["days_since_last_activity"] == pytest.approx(39.0)
+    # The silence is still counted, just in its own feature.
+    assert f["n_silence_gaps"] == 31
+    assert f["activity_count"] == 32
+
+
+def test_deal_with_only_silence_markers_is_treated_as_never_contacted():
+    activities = [_act("no_activity_7d", d) for d in (7, 14, 21)]
+    vec = build_feature_vector(_deal(), activities, as_of=CREATED + timedelta(days=28))
+    f = dict(zip(FEATURE_NAMES, vec))
+    assert f["days_since_last_activity"] == pytest.approx(28.0)
