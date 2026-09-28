@@ -152,7 +152,7 @@ not the right tool for per-event scoring and it costs a second Render service.
 | # | Phase | Status | Revised scope |
 |---|---|---|---|
 | 0 | Safety, branch, gap analysis | **DONE** (pending S1/S2) | History clean; `demo/hosted` cut; this file. Still: run `gitleaks`, confirm `crm_training_dataset.csv` provenance |
-| 1 | Generator + training + **ONNX** + model card | **ADAPT — do not skip** | Biggest single win. Add §4 activity events + 60 open deals + Faker names; retrain; **export `lstm.onnx` + parity test**; `xgb_model.json`; `feature_schema.json`; `evaluate.py` → `metrics.json` + `model_card.md`; commit all under `artifacts/`; `make train` |
+| 1 | Generator + training + **ONNX** + model card | **DONE** (see §8) | Biggest single win. Add §4 activity events + 60 open deals + Faker names; retrain; **export `lstm.onnx` + parity test**; `xgb_model.json`; `feature_schema.json`; `evaluate.py` → `metrics.json` + `model_card.md`; commit all under `artifacts/`; `make train` |
 | 2 | FastAPI + config + schema + Alembic + seed + compose | **ADAPT (~60% done)** | Add `activities` + `processed_events`; `String` → `DateTime` timestamps; `status` enum on actions; seed command. **Decide Postgres vs MySQL first** (recommend Postgres) |
 | 3 | Inference + SHAP + cache + latency | **ADAPT (~70% done)** | Swap TF→ONNX at `main.py`; **fix the `hash()` cache-key bug**; split latency into features/xgb/lstm/shap/total; add `/what-if`; `feature_schema` startup check |
 | 4 | NBA + actions ledger | **ADAPT — near-rewrite** | Rule ids, SHAP/feature conditions, driver-citing reasons, multi-rule firing, unit tests |
@@ -186,13 +186,61 @@ Nothing is hostable until the artifacts are in the repo and TensorFlow is out of
 
 ---
 
-## 7. Two questions that change the work
+## 7. Decisions taken
 
-1. **Postgres or MySQL?** Recommendation: **keep PostgreSQL.** The spec permits it, and the
-   Postgres-dialect UUID PKs + 4 Alembic revisions make the swap ~a day of work that no reviewer
-   will see. Take MySQL only if a specific job posting makes it a must-have.
-2. **Next.js or keep Vite?** Recommendation: **keep Vite.** Six working pages and a SHAP waterfall
-   already exist, `vercel.json` is in place, and §9's real asks (live SSE update, what-if sliders,
-   lazy charts) are all reachable in Vite. A rewrite is invisible to a reviewer.
+Both confirmed by the repo owner on 2026-09-28:
 
-Both are logged as assumptions, not decisions — say the word and either flips.
+1. **Database: PostgreSQL.** MySQL is not adopted. The spec permits Postgres unchanged, and the
+   dialect-specific UUID PKs plus 4 Alembic revisions made the swap ~a day of work no reviewer
+   would see. §6 work is therefore additive (new tables, `DateTime` columns), not a migration.
+2. **Dashboard: Vite.** No Next.js port. §9's real asks — live SSE updates, what-if sliders, lazy
+   charts — are all reachable in the existing Vite SPA, which already has six pages, a SHAP
+   waterfall, and `vercel.json`.
+
+Everywhere this document says "the spec says Next.js / MySQL", read it as background, not a
+pending task.
+
+---
+
+## 8. Phase 1 outcome (completed 2026-09-28)
+
+Delivered on `demo/hosted`:
+
+| Item | Result |
+|---|---|
+| `training/generate_synthetic.py` | 2,000 historical deals, 46,135 activities, 60 open live deals, all nine §4 event types, Faker company/rep names, seed 42 |
+| `app/features/build.py` | 32-feature contract shared by training and serving, hard-coded vocabularies (no pickled encoder) |
+| `artifacts/xgb_model.json` | Native format; accuracy **0.735**, AUC **0.789** on held-out synthetic data |
+| `artifacts/lstm.onnx` | PyTorch → ONNX opset 17, 51 KB, MAE **11.1 days** vs 15.2-day mean baseline (+27%) |
+| ONNX parity | **1.20e-07 days** max abs diff over 256 rows; also tested at batch 1/8/64 |
+| `artifacts/metrics.json`, `model_card.md` | Paper and demo metrics in separate blocks; latency left `null` until measured on the deploy |
+| Tests | 35 passed, 1 skipped; full clean rebuild reproduces byte-identical artifacts in 113 s |
+
+### Decisions and discoveries during Phase 1
+
+- **The LSTM was rebuilt in PyTorch, not exported from Keras.** TensorFlow was not installed on
+  the dev machine at all, and `tf2onnx` has poor Keras 3 support. The spec permits either stack.
+  This permanently removes TensorFlow from the dependency tree.
+- **`shap` must be bumped 0.49.1 → 0.51.0.** Older shap cannot parse xgboost 3.2's `base_score`,
+  now serialised as `'[3.8455883E-1]'` rather than a scalar, and raises `ValueError` inside
+  `TreeExplainer`. This would have broken the service's explainer in Phase 3, not just training.
+- **`torch.onnx.export` needs `dynamo=False`.** The default dynamo exporter in torch ≥2.9 spills
+  weights into a sidecar `lstm.onnx.data` and hard-codes the output shape to `[1,1]`. The first
+  breaks any deploy that copies only the `.onnx`; both are now asserted against in
+  `tests/test_artifacts.py`.
+- **Training uses mid-flight truncation.** Historical deals are featurised at a random 35–100% of
+  their life, not at close, because the service scores *open* deals with partial activity logs.
+  Training on complete histories would put every served vector out of distribution.
+- **`requirements.txt` is now runtime-only**; `requirements-train.txt` holds torch/optuna/mlflow/
+  faker. TensorFlow, the pre-release scikit-learn pin, and the duplicate `psycopg2-binary` driver
+  are gone.
+- **`ml/train.py` and `ml/train_problem2_lstm.py` were left in place.** Both rely on
+  `ml/pipeline.py` being a sibling via `sys.path.append(os.path.dirname(__file__))`, so moving
+  them into `training/` per §3 would break them — against §A.2's "keep the original experiment
+  scripts runnable". `ml/` is now the original research plus the MLOps loop; `training/` is the
+  reproducible demo pipeline.
+- **`make` is unavailable on the Windows dev machine.** The `Makefile` is kept for CI and Render;
+  `train.ps1` is the local equivalent (`.\train.ps1 -Clean -Test`).
+- **Still deferred:** the §3 `service/` + `dashboard/` directory rename. It touches the
+  Dockerfile, compose, `alembic.ini`, and CI paths for no reviewer-visible gain, so it belongs
+  with Phase 2 where those files are already being edited.

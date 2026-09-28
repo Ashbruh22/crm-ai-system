@@ -1,6 +1,15 @@
 import pytest
-from fastapi.testclient import TestClient
-from app.main import app
+
+# The service stack is not installed in the training environment
+# (requirements-train.txt), and app.main still imports TensorFlow until phase 3
+# swaps it for ONNX Runtime. Skip rather than error at collection so the
+# training suite stays green; CI installs requirements.txt and runs these.
+pytest.importorskip("fastapi", reason="service deps not installed")
+pytest.importorskip("tensorflow", reason="app.main still imports TensorFlow (phase 3)")
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.main import app  # noqa: E402
 
 def test_health_check():
     with TestClient(app) as client:

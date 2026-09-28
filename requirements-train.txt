@@ -1,0 +1,27 @@
+# Training-only dependencies (spec section 0: "not in runtime image").
+#
+# Installed on a dev machine or in CI to run `make train`. NEVER copied into the
+# service Dockerfile: PyTorch alone is ~600 MB and the runtime budget is ~512 MB.
+# The LSTM leaves this environment as artifacts/lstm.onnx and is served through
+# onnxruntime instead.
+#
+#   python -m venv .venv
+#   .venv/bin/pip install -r requirements.txt -r requirements-train.txt
+#   make train
+
+-r requirements.txt
+
+# ─── Sequence model training + ONNX export ──────────────────────────────────
+# CPU wheels are enough; the model is tiny. On Windows/Linux CPU-only hosts:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.2
+# torch>=2.9 routes torch.onnx.export through dynamo, which needs onnxscript.
+# train_lstm.py passes dynamo=False, but the import happens regardless.
+onnxscript>=0.1
+
+# ─── Synthetic data generation ───────────────────────────────────────────────
+faker==30.8.2
+
+# ─── Hyperparameter search + experiment tracking (existing MLOps loop) ──────
+optuna==4.4.0
+mlflow>=2.16

@@ -1,0 +1,20 @@
+{
+  "mae_days": 11.052,
+  "rmse_days": 14.349,
+  "baseline_mae_days": 15.165,
+  "improvement_vs_baseline": 0.2712,
+  "n_train": 1600,
+  "n_test": 400,
+  "input_shape": [
+    60,
+    7
+  ],
+  "day_scale": 100.0,
+  "onnx_opset": 17,
+  "onnx_parity": {
+    "n_compared": 256,
+    "max_abs_diff_days": 1.2e-07,
+    "tolerance": 0.001,
+    "passed": true
+  }
+}

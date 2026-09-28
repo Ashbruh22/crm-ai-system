@@ -1,0 +1,125 @@
+{
+  "generated_on": "2026-09-28",
+  "model_version": "demo-2026-09-28",
+  "synthetic_data": true,
+  "n_features": 32,
+  "data": {
+    "seed": 42,
+    "world_now": "2026-09-01T00:00:00",
+    "n_historical_deals": 2000,
+    "n_activities": 46135,
+    "n_live_deals": 60,
+    "n_live_activities": 1243,
+    "historical_win_rate": 0.3845,
+    "mean_cycle_days": 89.95,
+    "activities_per_deal": 23.07,
+    "synthetic": true
+  },
+  "demo_models": {
+    "win_probability": {
+      "accuracy": 0.735,
+      "auc_roc": 0.7891,
+      "precision": 0.7105,
+      "recall": 0.526,
+      "f1": 0.6045,
+      "brier": 0.1802,
+      "best_iteration": 69,
+      "n_train": 1600,
+      "n_test": 400,
+      "positive_rate_test": 0.385
+    },
+    "days_to_close": {
+      "mae_days": 11.052,
+      "rmse_days": 14.349,
+      "baseline_mae_days": 15.165,
+      "improvement_vs_baseline": 0.2712,
+      "n_train": 1600,
+      "n_test": 400,
+      "input_shape": [
+        60,
+        7
+      ],
+      "day_scale": 100.0,
+      "onnx_opset": 17,
+      "onnx_parity": {
+        "n_compared": 256,
+        "max_abs_diff_days": 1.2e-07,
+        "tolerance": 0.001,
+        "passed": true
+      }
+    }
+  },
+  "paper_reference": {
+    "source": "ICIDS 2026 paper, real pilot CRM data (not in this repo)",
+    "win_model_accuracy": 0.873,
+    "win_model_auc_roc": 0.92,
+    "reproducible_here": false,
+    "note": "Measured on the partner organisation's real CRM data under the original pilot. The data cannot be published, so these numbers cannot be regenerated from this repository."
+  },
+  "global_drivers": [
+    {
+      "feature": "has_champion",
+      "label": "Champion identified",
+      "mean_abs_shap": 0.5029
+    },
+    {
+      "feature": "n_silence_gaps",
+      "label": "7-day silence gaps",
+      "mean_abs_shap": 0.38149
+    },
+    {
+      "feature": "reply_rate",
+      "label": "Email reply rate",
+      "mean_abs_shap": 0.24194
+    },
+    {
+      "feature": "days_since_last_activity",
+      "label": "Days since last touch",
+      "mean_abs_shap": 0.18317
+    },
+    {
+      "feature": "activity_per_week",
+      "label": "Activities per week",
+      "mean_abs_shap": 0.12581
+    },
+    {
+      "feature": "n_emails_replied",
+      "label": "Emails replied to",
+      "mean_abs_shap": 0.11952
+    },
+    {
+      "feature": "n_meetings",
+      "label": "Meetings held",
+      "mean_abs_shap": 0.10812
+    },
+    {
+      "feature": "deal_size_k",
+      "label": "Deal size ($k)",
+      "mean_abs_shap": 0.10801
+    },
+    {
+      "feature": "n_demos",
+      "label": "Demos delivered",
+      "mean_abs_shap": 0.10251
+    },
+    {
+      "feature": "activity_count",
+      "label": "Total activities",
+      "mean_abs_shap": 0.06695
+    },
+    {
+      "feature": "rep_win_rate",
+      "label": "Rep historical win rate",
+      "mean_abs_shap": 0.04507
+    },
+    {
+      "feature": "days_open",
+      "label": "Days open",
+      "mean_abs_shap": 0.03243
+    }
+  ],
+  "latency_ms": {
+    "measured": null,
+    "note": "Measured on the hosted deployment in phase 9 and reported in the README. Not yet measured; the paper's 180 ms figure is from different hardware and is not reused here."
+  }
+}

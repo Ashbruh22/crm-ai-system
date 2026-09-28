@@ -1,24 +1,34 @@
-# ─── ML / Data Science ──────────────────────────────────────────────────────
-# NOTE: scikit-learn==1.9.0 confirmed installed (pre-release); must match the
-# version that serialized ml/pipeline.joblib to avoid InconsistentVersionWarning.
-scikit-learn==1.9.0
+# ─── RUNTIME dependencies only ───────────────────────────────────────────────
+# Must fit a ~512 MB CPU container (spec section 0). Training-only packages
+# (torch, optuna, mlflow, faker) live in requirements-train.txt and are never
+# copied into the service image.
+#
+# Removed in phase 1, deliberately:
+#   tensorflow==2.21.0  ~600 MB, alone over budget. The LSTM is served from
+#                       artifacts/lstm.onnx via onnxruntime (~15 MB) instead.
+#   optuna, mlflow      training/MLOps only.
+#   scikit-learn pin    was pinned to a PRE-RELEASE (1.9.0) purely to match the
+#                       ml/pipeline.joblib pickle. Feature engineering is now
+#                       plain code in app/features/build.py with hard-coded
+#                       vocabularies, so no pickled encoder and no pin.
+#   psycopg2-binary     asyncpg is the driver in use; one is enough.
+
+# ─── Inference ───────────────────────────────────────────────────────────────
 xgboost==3.2.0
-tensorflow==2.21.0
-shap==0.49.1
+onnxruntime==1.20.1
+# shap <0.51 cannot parse xgboost 3.2's base_score, which it now serialises as
+# '[3.8455883E-1]' rather than a scalar, raising ValueError in TreeExplainer.
+shap==0.51.0
 numpy==1.26.4
 pandas==2.3.3
-joblib==1.5.3
-optuna==4.4.0
-celery==5.4.0
-mlflow
 
-# ─── FastAPI / ASGI Stack ────────────────────────────────────────────────────
+# ─── FastAPI / ASGI stack ────────────────────────────────────────────────────
 fastapi==0.125.0
 uvicorn[standard]==0.34.3
 gunicorn==23.0.0
 python-multipart==0.0.20
 
-# ─── Pydantic v2 + Settings ──────────────────────────────────────────────────
+# ─── Pydantic v2 + settings ──────────────────────────────────────────────────
 pydantic==2.11.7
 pydantic-settings==2.10.1
 
@@ -26,9 +36,8 @@ pydantic-settings==2.10.1
 sqlalchemy[asyncio]==2.0.41
 alembic==1.16.4
 asyncpg==0.30.0
-psycopg2-binary==2.9.10
 
-# ─── Cache ───────────────────────────────────────────────────────────────────
+# ─── Cache + stream bus ──────────────────────────────────────────────────────
 redis==5.2.1
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
