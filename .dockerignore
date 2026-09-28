@@ -1,11 +1,43 @@
+# Keep the runtime image small (spec section 12).
+
+# Virtualenvs and VCS
 .venv
-../.venv_temp
+venv
 .git
+.github
+
+# Python noise
 __pycache__
 *.pyc
 *.pyo
 .pytest_cache
 .coverage
+
+# Not part of the service
+frontend
+training
+tests
+conftest.py
+pytest.ini
+train.ps1
+Makefile
+run_verifications.ps1
+requirements-train.txt
+nginx
+docs
+models
+
+# Large synthetic training data: the image only needs the live demo set, which
+# the Dockerfile copies explicitly.
+data/*.csv
+data/synthetic/deals.csv
+data/synthetic/activities.csv
+data/*.json
+
+# Local state
 *.log
+*.db
+demo_local.db
 scratch
 .system_generated
+.env

@@ -25,11 +25,14 @@ import redis.asyncio as redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
 from app.middleware import RequestIDMiddleware
 from app.models.registry import ArtifactError, ModelRegistry, registry
-from app.routers import actions, deals, events, meta, scoring, stream
+from app.routers import actions, admin, deals, events, meta, scoring, stream
+from app.security.ratelimit import limiter
 
 log = logging.getLogger("crm_ai")
 
@@ -38,10 +41,12 @@ log = logging.getLogger("crm_ai")
 # their models any more, so mounting them would break startup. Each is restored
 # against the new registry in the phase noted:
 #   admin.py, auth.py       -> phase 8 (security pass)
-# Superseded: predict.py + explain.py by routers/scoring.py (phase 3),
-# recommendations.py by agent/nba.py + routers/actions.py (phase 4),
-# crm.py by bus/ + routers/events.py (phase 5).
-LEGACY_ROUTERS_DISABLED = ("admin", "auth")
+# The pre-phase-1 routers and services have been deleted rather than left as
+# dead code: predict.py + explain.py were superseded by routers/scoring.py,
+# recommendations.py by agent/nba.py + routers/actions.py, crm.py by bus/ +
+# routers/events.py, and the old admin.py by the token-gated reset below.
+# app/routers/auth.py survives only because it carries uncommitted local
+# changes; nothing imports it and it is not mounted.
 
 
 @asynccontextmanager
@@ -128,6 +133,23 @@ async def lifespan(app: FastAPI):
     await app.state.redis.aclose()
 
 
+def _rate_limit_handler(request, exc: RateLimitExceeded):
+    """429 with an explanation and a Retry-After the client can act on."""
+    from fastapi.responses import JSONResponse
+
+    retry_after = getattr(exc, "retry_after", None) or 60
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": (
+                "Too many requests. This demo runs on a free-tier container, "
+                f"so calls are capped ({exc.detail}). Try again shortly."
+            )
+        },
+        headers={"Retry-After": str(retry_after)},
+    )
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="CRM AI Core",
@@ -140,6 +162,11 @@ def create_app() -> FastAPI:
         docs_url="/docs" if settings.DOCS_ENABLED else None,
         redoc_url=None,
     )
+
+    # Rate limiting must be installed before the routes that reference it.
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
+    app.add_middleware(SlowAPIMiddleware)
 
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(
@@ -160,6 +187,7 @@ def create_app() -> FastAPI:
     app.include_router(events.webhook_router, prefix="/webhooks", tags=["Events"])
     app.include_router(stream.router, prefix="/api/stream", tags=["Stream"])
     app.include_router(meta.router, prefix="/api/meta", tags=["Meta"])
+    app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
     _register_health(app)
     return app

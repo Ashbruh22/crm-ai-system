@@ -14,7 +14,12 @@
 #   psycopg2-binary     asyncpg is the driver in use; one is enough.
 
 # ─── Inference ───────────────────────────────────────────────────────────────
-xgboost==3.2.0
+# xgboost's Linux wheel depends on nvidia-nccl-cu12 and pulls ~470 MB of CUDA
+# runtime into the image for a service that scores on CPU. xgboost-cpu is the
+# same library built without it. Only Linux ships the GPU variant, so the
+# marker keeps Windows and macOS development on the ordinary package.
+xgboost-cpu==3.2.0; sys_platform == "linux"
+xgboost==3.2.0; sys_platform != "linux"
 onnxruntime==1.20.1
 # NOTE: the `shap` package is deliberately NOT a runtime dependency.
 # Explanations come from XGBoost's own TreeSHAP (booster.predict(
@@ -47,6 +52,11 @@ redis==5.2.1
 # ─── Auth ────────────────────────────────────────────────────────────────────
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+
+# ─── Rate limiting (spec section 10) ─────────────────────────────────────────
+# In-process storage: one Render service, so a Redis backend would add a
+# round trip per request to coordinate workers that do not exist.
+slowapi==0.1.9
 
 # ─── Observability ───────────────────────────────────────────────────────────
 structlog==25.4.0

@@ -25,6 +25,7 @@ from app.schemas.scoring import (
     WhatIfRequest,
     WhatIfResponse,
 )
+from app.security.ratelimit import SCORE_LIMIT, WHATIF_LIMIT, limiter
 from app.services import scoring
 
 router = APIRouter()
@@ -45,7 +46,9 @@ def get_redis(request: Request):
 
 
 @router.post("/{deal_id}/score", response_model=ScoreResponse)
+@limiter.limit(SCORE_LIMIT)
 async def score_deal(
+    request: Request,
     deal_id: str,
     body: ScoreRequest | None = None,
     session: AsyncSession = Depends(get_session),
@@ -113,7 +116,9 @@ async def explain_deal(
 
 
 @router.post("/{deal_id}/what-if", response_model=WhatIfResponse)
+@limiter.limit(WHATIF_LIMIT)
 async def what_if(
+    request: Request,
     deal_id: str,
     body: WhatIfRequest,
     session: AsyncSession = Depends(get_session),

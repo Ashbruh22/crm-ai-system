@@ -25,6 +25,7 @@ from app.config import settings
 from app.db.models import Deal
 from app.db.session import get_session
 from app.features.build import ACTIVITY_TYPES
+from app.security.ratelimit import EVENT_LIMIT, limiter
 from app.security.webhook import SignatureError, verify
 
 log = logging.getLogger("crm_ai.events")
@@ -73,7 +74,9 @@ async def _publish(bus, event: Event) -> dict:
 
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit(EVENT_LIMIT)
 async def simulate_event(
+    request: Request,
     body: EventIn,
     response: Response,
     bus=Depends(get_bus),
