@@ -19,6 +19,14 @@ torch>=2.2
 # train_lstm.py passes dynamo=False, but the import happens regardless.
 onnxscript>=0.1
 
+# ─── Explainability for the legacy research scripts ─────────────────────────
+# ml/shap_explainer.py and the original notebooks use the shap package. The
+# service does not: it uses XGBoost's native TreeSHAP instead (see
+# requirements.txt). Pinned >=0.51 because older versions cannot parse
+# xgboost 3.2's base_score.
+shap>=0.51.0
+scikit-learn==1.5.2
+
 # ─── Synthetic data generation ───────────────────────────────────────────────
 faker==30.8.2
 

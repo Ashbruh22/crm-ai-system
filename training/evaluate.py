@@ -10,9 +10,10 @@ separate blocks and never averaged, blended, or presented as one number. The
 demo models are retrained on generated data and score materially lower; saying
 so plainly is the point.
 
-Also verifies that ``shap.TreeExplainer`` loads the native ``xgb_model.json``
-directly, which is the claim that lets the runtime image skip a pickled
-scikit-learn pipeline entirely.
+Global driver importance uses XGBoost's own TreeSHAP (``pred_contribs=True``)
+rather than the ``shap`` package, matching what the service serves. The shap
+package's TreeExplainer re-parses the booster and, against xgboost 3.2, produced
+attributions that did not sum to the prediction.
 """
 
 from __future__ import annotations
@@ -24,7 +25,6 @@ import sys
 from datetime import date
 
 import numpy as np
-import shap
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 
@@ -59,10 +59,11 @@ TOP_K = 12
 
 
 def global_shap_importance(booster: xgb.Booster, X) -> list[dict]:
-    """Mean |SHAP| per feature, using TreeExplainer on the native booster."""
-    explainer = shap.TreeExplainer(booster)
+    """Mean |SHAP| per feature, from XGBoost's native TreeSHAP."""
     sample = X.iloc[:SHAP_SAMPLE]
-    values = explainer.shap_values(sample)
+    dmatrix = xgb.DMatrix(sample, feature_names=list(FEATURE_NAMES))
+    # Last column is the bias term, not a feature.
+    values = np.asarray(booster.predict(dmatrix, pred_contribs=True))[:, :-1]
     mean_abs = np.abs(values).mean(axis=0)
     order = np.argsort(mean_abs)[::-1]
     return [
@@ -272,7 +273,7 @@ def main() -> None:
 
     print(f"  wrote {metrics_path}")
     print(f"  wrote {card_path}")
-    print(f"  TreeExplainer loaded xgb_model.json natively: {len(drivers)} drivers ranked")
+    print(f"  native TreeSHAP: {len(drivers)} drivers ranked")
     print(f"  top driver: {drivers[0]['label']} ({drivers[0]['mean_abs_shap']:.4f})")
 
 

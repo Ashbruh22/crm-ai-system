@@ -16,18 +16,15 @@
 # ─── Inference ───────────────────────────────────────────────────────────────
 xgboost==3.2.0
 onnxruntime==1.20.1
-# shap <0.51 cannot parse xgboost 3.2's base_score, which it now serialises as
-# '[3.8455883E-1]' rather than a scalar, raising ValueError in TreeExplainer.
-shap==0.51.0
-# shap 0.51 pulls numba>=0.62, which requires numpy>=2. Pinning numpy 1.26 here
-# makes the install unresolvable. The phase-1 artifacts were built and verified
-# under 2.4.6; metrics were identical on 1.26.4, so this is a packaging
-# constraint, not a modelling one.
+# NOTE: the `shap` package is deliberately NOT a runtime dependency.
+# Explanations come from XGBoost's own TreeSHAP (booster.predict(
+# pred_contribs=True)) -- the same algorithm, computed by the library that
+# built the trees. shap's TreeExplainer re-parses the booster and, against
+# xgboost 3.2, returned attributions that did not sum to the prediction
+# (errors up to 0.38 in log-odds). Dropping it also removes numba and llvmlite
+# (~70 MB) from the image. See app/models/registry.py:shap_contribs.
 numpy==2.4.6
 pandas==2.3.3
-# Transitive via shap, pinned so the image is reproducible. Nothing imports it
-# directly any more: feature engineering is plain code in app/features/build.py.
-scikit-learn==1.5.2
 
 # ─── FastAPI / ASGI stack ────────────────────────────────────────────────────
 fastapi==0.125.0

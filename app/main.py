@@ -29,7 +29,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.config import settings
 from app.middleware import RequestIDMiddleware
 from app.models.registry import ArtifactError, ModelRegistry, registry
-from app.routers import deals, meta
+from app.routers import deals, meta, scoring
 
 log = logging.getLogger("crm_ai")
 
@@ -37,13 +37,11 @@ log = logging.getLogger("crm_ai")
 # model) and the legacy opportunities/predictions tables. They cannot load
 # their models any more, so mounting them would break startup. Each is restored
 # against the new registry in the phase noted:
-#   predict.py, explain.py  -> phase 3 (scoring + SHAP + cache)
 #   recommendations.py      -> phase 4 (NBA rule engine)
 #   crm.py                  -> phase 5 (MessageBus + signed webhook)
 #   admin.py, auth.py       -> phase 8 (security pass)
-LEGACY_ROUTERS_DISABLED = (
-    "predict", "explain", "recommendations", "crm", "admin", "auth",
-)
+# predict.py and explain.py were replaced in phase 3 by routers/scoring.py.
+LEGACY_ROUTERS_DISABLED = ("recommendations", "crm", "admin", "auth")
 
 
 @asynccontextmanager
@@ -111,6 +109,8 @@ def create_app() -> FastAPI:
     Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
     app.include_router(deals.router, prefix="/api/deals", tags=["Deals"])
+    # Same prefix as deals.py; the paths do not collide ({id} vs {id}/score).
+    app.include_router(scoring.router, prefix="/api/deals", tags=["Scoring"])
     app.include_router(meta.router, prefix="/api/meta", tags=["Meta"])
 
     _register_health(app)

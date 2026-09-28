@@ -97,18 +97,18 @@ leaked the label, not that the model was good.
 
 | # | Driver | Mean abs SHAP |
 |---|---|---|
-| 1 | Champion identified | 0.5029 |
-| 2 | 7-day silence gaps | 0.3815 |
-| 3 | Email reply rate | 0.2419 |
-| 4 | Days since last touch | 0.1832 |
-| 5 | Activities per week | 0.1258 |
-| 6 | Emails replied to | 0.1195 |
-| 7 | Meetings held | 0.1081 |
-| 8 | Deal size ($k) | 0.1080 |
-| 9 | Demos delivered | 0.1025 |
-| 10 | Total activities | 0.0669 |
-| 11 | Rep historical win rate | 0.0451 |
-| 12 | Days open | 0.0324 |
+| 1 | Champion identified | 0.5131 |
+| 2 | 7-day silence gaps | 0.4535 |
+| 3 | Email reply rate | 0.2640 |
+| 4 | Days since last touch | 0.2126 |
+| 5 | Meetings held | 0.1366 |
+| 6 | Deal size ($k) | 0.1352 |
+| 7 | Activities per week | 0.1302 |
+| 8 | Emails replied to | 0.1290 |
+| 9 | Demos delivered | 0.1157 |
+| 10 | Total activities | 0.0801 |
+| 11 | Rep historical win rate | 0.0662 |
+| 12 | Days open | 0.0614 |
 
 ## Limitations
 

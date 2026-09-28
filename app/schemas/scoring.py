@@ -1,0 +1,106 @@
+"""Request/response models for the scoring endpoints (spec sections 7, 10)."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, Field, field_validator
+
+from app.services.scoring import WHAT_IF_BOUNDS
+
+
+class ScoreRequest(BaseModel):
+    """Body for POST /api/deals/{id}/score."""
+
+    bypass_cache: bool = Field(
+        default=True,
+        description="Recompute even when a cached result exists. Defaults to "
+        "true because the endpoint exists to force a re-score.",
+    )
+
+
+class LatencyBreakdown(BaseModel):
+    features: float | None = None
+    xgb: float | None = None
+    lstm: float | None = None
+    shap: float | None = None
+    cache: float | None = None
+    total: float
+
+
+class ShapDriver(BaseModel):
+    feature: str
+    label: str
+    value: float
+    shap: float
+    direction: str
+
+
+class ScoreResponse(BaseModel):
+    deal_id: str
+    win_prob: float
+    days_to_close: float | None
+    model_version: str
+    shap_top: list[ShapDriver]
+    shap_base_value: float
+    feature_hash: str
+    latency_ms: LatencyBreakdown
+    cache_hit: bool
+    scored_at: str
+    synthetic_data: bool = True
+
+
+class WhatIfRequest(BaseModel):
+    """Body for POST /api/deals/{id}/what-if.
+
+    Only the features in ``WHAT_IF_BOUNDS`` may be adjusted, each within its
+    bounds. Unknown keys are rejected rather than ignored, so a typo in a slider
+    name fails loudly instead of silently returning the unchanged score.
+    """
+
+    overrides: dict[str, float] = Field(
+        ...,
+        min_length=1,
+        description="Feature name -> hypothetical value.",
+        examples=[{"n_stakeholders": 4, "days_since_last_activity": 2}],
+    )
+
+    @field_validator("overrides")
+    @classmethod
+    def _known_and_in_bounds(cls, value: dict[str, float]) -> dict[str, float]:
+        unknown = sorted(set(value) - set(WHAT_IF_BOUNDS))
+        if unknown:
+            raise ValueError(
+                f"not adjustable: {unknown}. "
+                f"Allowed: {sorted(WHAT_IF_BOUNDS)}"
+            )
+        for name, raw in value.items():
+            low, high = WHAT_IF_BOUNDS[name]
+            if not (low <= float(raw) <= high):
+                raise ValueError(f"{name} must be between {low} and {high}, got {raw}")
+        return value
+
+
+class WhatIfResponse(BaseModel):
+    deal_id: str
+    baseline: dict
+    what_if: dict
+    delta: dict
+    applied_overrides: dict
+    shap_top: list[ShapDriver]
+    shap_base_value: float
+    model_version: str
+    latency_ms: LatencyBreakdown
+    persisted: bool = False
+
+
+class ExplainResponse(BaseModel):
+    deal_id: str
+    win_prob: float
+    model_version: str
+    #: Every feature's contribution, not just the top k.
+    shap_values: list[ShapDriver]
+    shap_base_value: float
+    #: base_value + sum(shap) in log-odds, which should reconstruct the score.
+    margin: float
+    scored_at: str
+    from_cache: bool = False
+    synthetic_data: bool = True

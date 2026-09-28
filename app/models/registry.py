@@ -7,6 +7,15 @@ neither of which was in git, so a fresh clone could not boot.
 Now: XGBoost from its native JSON, the LSTM from ONNX Runtime, and no deep
 learning framework in the image at all.
 
+Explanations use **XGBoost's own TreeSHAP** (``pred_contribs=True``) rather than
+the ``shap`` package. Same algorithm, but computed by the library that built the
+trees, so ``bias + sum(contribs)`` reproduces the model margin to ~3e-07. The
+``shap`` package's ``TreeExplainer`` re-parses the booster itself and, against
+xgboost 3.2, returned attributions that did not sum to the prediction (errors up
+to 0.38 in log-odds). An explanation that disagrees with the score it explains is
+worse than no explanation. Dropping the dependency also removes numba and
+llvmlite from the runtime image.
+
 The service **refuses to start** if ``artifacts/feature_schema.json`` disagrees
 with ``app.features.build``. A silent mismatch is worse than downtime: the model
 would score a vector whose columns mean something other than what it learned,
@@ -43,7 +52,6 @@ class ModelRegistry:
     artifact_dir: str = DEFAULT_ARTIFACT_DIR
     booster: Any = None
     lstm_session: Any = None
-    explainer: Any = None
     rep_stats: dict[str, float] = field(default_factory=dict)
     global_win_rate: float = 0.4
     model_version: str = "unknown"
@@ -102,18 +110,14 @@ class ModelRegistry:
     def load(self) -> "ModelRegistry":
         """Load every artifact. Call once, at startup."""
         # Imported here rather than at module scope so that importing the
-        # registry (for tests, or for `--help`) does not pull in xgboost/shap.
+        # registry (for tests, or for `--help`) does not pull in xgboost.
         import onnxruntime as ort
-        import shap
         import xgboost as xgb
 
         self.schema = self.validate_schema()
 
         self.booster = xgb.Booster()
         self.booster.load_model(self._require("xgb_model.json"))
-        # TreeExplainer reads the native JSON directly — no pickled sklearn
-        # pipeline, which is what lets the image skip a scikit-learn pin.
-        self.explainer = shap.TreeExplainer(self.booster)
 
         self.lstm_session = ort.InferenceSession(
             self._require("lstm.onnx"), providers=["CPUExecutionProvider"]
@@ -162,6 +166,21 @@ class ModelRegistry:
         dmatrix = xgb.DMatrix(X, feature_names=list(FEATURE_NAMES))
         return np.asarray(self.booster.predict(dmatrix), dtype=np.float64)
 
+    def shap_contribs(self, X: np.ndarray) -> tuple[np.ndarray, float]:
+        """Exact TreeSHAP attributions in log-odds, plus the bias term.
+
+        Returns ``(contribs, bias)`` where ``contribs`` is ``(n, n_features)``
+        and ``bias + contribs[i].sum()`` equals the model's margin for row i.
+        """
+        import xgboost as xgb
+
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        dmatrix = xgb.DMatrix(X, feature_names=list(FEATURE_NAMES))
+        raw = np.asarray(self.booster.predict(dmatrix, pred_contribs=True))
+        # Last column is the bias, identical for every row.
+        return raw[:, :-1], float(raw[0, -1])
+
     def predict_days_to_close(self, sequences: np.ndarray) -> np.ndarray:
         """Days to close for a (n, SEQ_LEN, n_seq_features) batch."""
         if sequences.ndim == 2:
@@ -182,7 +201,7 @@ class ModelRegistry:
             "model_version": self.model_version,
             "xgb_loaded": self.booster is not None,
             "lstm_loaded": self.lstm_session is not None,
-            "explainer_loaded": self.explainer is not None,
+            "explainer": "xgboost-treeshap",
             "n_features": len(FEATURE_NAMES),
             "sequence_len": SEQ_LEN,
             "reps_known": len(self.rep_stats),

@@ -60,62 +60,62 @@
     {
       "feature": "has_champion",
       "label": "Champion identified",
-      "mean_abs_shap": 0.5029
+      "mean_abs_shap": 0.51309
     },
     {
       "feature": "n_silence_gaps",
       "label": "7-day silence gaps",
-      "mean_abs_shap": 0.38149
+      "mean_abs_shap": 0.45352
     },
     {
       "feature": "reply_rate",
       "label": "Email reply rate",
-      "mean_abs_shap": 0.24194
+      "mean_abs_shap": 0.26401
     },
     {
       "feature": "days_since_last_activity",
       "label": "Days since last touch",
-      "mean_abs_shap": 0.18317
-    },
-    {
-      "feature": "activity_per_week",
-      "label": "Activities per week",
-      "mean_abs_shap": 0.12581
-    },
-    {
-      "feature": "n_emails_replied",
-      "label": "Emails replied to",
-      "mean_abs_shap": 0.11952
+      "mean_abs_shap": 0.21259
     },
     {
       "feature": "n_meetings",
       "label": "Meetings held",
-      "mean_abs_shap": 0.10812
+      "mean_abs_shap": 0.13656
     },
     {
       "feature": "deal_size_k",
       "label": "Deal size ($k)",
-      "mean_abs_shap": 0.10801
+      "mean_abs_shap": 0.13518
+    },
+    {
+      "feature": "activity_per_week",
+      "label": "Activities per week",
+      "mean_abs_shap": 0.13018
+    },
+    {
+      "feature": "n_emails_replied",
+      "label": "Emails replied to",
+      "mean_abs_shap": 0.12901
     },
     {
       "feature": "n_demos",
       "label": "Demos delivered",
-      "mean_abs_shap": 0.10251
+      "mean_abs_shap": 0.11567
     },
     {
       "feature": "activity_count",
       "label": "Total activities",
-      "mean_abs_shap": 0.06695
+      "mean_abs_shap": 0.08014
     },
     {
       "feature": "rep_win_rate",
       "label": "Rep historical win rate",
-      "mean_abs_shap": 0.04507
+      "mean_abs_shap": 0.06624
     },
     {
       "feature": "days_open",
       "label": "Days open",
-      "mean_abs_shap": 0.03243
+      "mean_abs_shap": 0.06145
     }
   ],
   "latency_ms": {

@@ -96,16 +96,44 @@ def test_recorded_onnx_parity_passed():
     assert parity["n_compared"] > 1, "parity must be checked on a real batch"
 
 
-def test_xgb_model_loads_natively_into_tree_explainer():
-    """Confirms the runtime needs no pickled sklearn pipeline."""
-    import shap
+def test_xgb_model_loads_natively_and_explains_additively():
+    """The runtime needs no pickled sklearn pipeline and no shap package.
+
+    Explanations come from XGBoost's own TreeSHAP. The additivity assertion is
+    the point: the shap package's TreeExplainer, against xgboost 3.2, returned
+    attributions that did NOT sum to the prediction (errors up to 0.38 in
+    log-odds), which would have made every dashboard explanation wrong.
+    """
     import xgboost as xgb
 
     booster = xgb.Booster()
     booster.load_model(os.path.join(ARTIFACT_DIR, "xgb_model.json"))
-    explainer = shap.TreeExplainer(booster)
-    values = explainer.shap_values(np.zeros((4, len(FEATURE_NAMES)), dtype=np.float32))
-    assert np.asarray(values).shape == (4, len(FEATURE_NAMES))
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(0, 1, (8, len(FEATURE_NAMES))).astype(np.float32)
+    dmatrix = xgb.DMatrix(X, feature_names=list(FEATURE_NAMES))
+
+    contribs = np.asarray(booster.predict(dmatrix, pred_contribs=True))
+    assert contribs.shape == (8, len(FEATURE_NAMES) + 1), "last column is the bias"
+
+    margin = booster.predict(dmatrix, output_margin=True)
+    assert np.max(np.abs(contribs.sum(axis=1) - margin)) < 1e-5
+
+    # And the margin reconstructs the probability.
+    prob = booster.predict(dmatrix)
+    assert np.allclose(1.0 / (1.0 + np.exp(-margin)), prob, atol=1e-6)
+
+
+def test_runtime_requirements_exclude_the_shap_package():
+    """shap is a training-only dependency; it pulls numba + llvmlite (~70 MB)."""
+    root = os.path.dirname(ARTIFACT_DIR)
+    with open(os.path.join(root, "requirements.txt"), encoding="utf-8") as fh:
+        runtime = [
+            line.split("#")[0].strip()
+            for line in fh
+            if line.strip() and not line.strip().startswith("#")
+        ]
+    assert not any(r.lower().startswith("shap") for r in runtime), runtime
 
 
 def test_metrics_keep_paper_and_demo_separate():

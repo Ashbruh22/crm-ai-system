@@ -69,10 +69,19 @@ async def session(engine):
 
 
 @pytest.fixture
-def fake_redis():
+async def fake_redis():
+    """A fresh fake Redis bound to the test's own event loop.
+
+    This has to be an async fixture. Built synchronously, the client binds to
+    whichever loop happens to be current, and later cache calls fail against a
+    closed loop. Scoring swallows cache errors by design, so the symptom is not
+    an exception but a cache that silently never hits.
+    """
     import fakeredis.aioredis
 
-    return fakeredis.aioredis.FakeRedis(decode_responses=True)
+    client = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    yield client
+    await client.aclose()
 
 
 @pytest.fixture
