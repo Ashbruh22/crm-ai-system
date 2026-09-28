@@ -29,3 +29,9 @@ test-results/
 playwright-report/
 shots/
 .env.local
+
+# Vite reads .env for every build, including production. A stale one here
+# silently bakes the wrong API URL into the deployed bundle.
+.env
+.env.*
+!.env.example

@@ -13,10 +13,28 @@
  */
 import axios from "axios";
 
-/** Trailing slash trimmed so `${BASE}/api/deals` never doubles up. */
-export const API_BASE = (
-  import.meta.env.VITE_API_URL || "http://localhost:8000"
-).replace(/\/+$/, "");
+/**
+ * Base URL of the ML service, with any trailing slash trimmed so
+ * `${BASE}/api/deals` never doubles up.
+ *
+ * Vite inlines this at build time, so a wrong value cannot be corrected at
+ * runtime — it ships. A stale local `.env` once baked in `/api/v1`, which made
+ * every request resolve against the dashboard's own origin and 404 silently.
+ * A production build without the variable set now fails loudly instead.
+ */
+const configured = import.meta.env.VITE_API_URL?.trim();
+
+if (import.meta.env.PROD && !configured) {
+  throw new Error(
+    "VITE_API_URL is not set. Point it at the ML service before building, " +
+      "or the dashboard will request its own origin and find nothing.",
+  );
+}
+
+export const API_BASE = (configured || "http://localhost:8000").replace(
+  /\/+$/,
+  "",
+);
 
 const api = axios.create({
   baseURL: API_BASE,

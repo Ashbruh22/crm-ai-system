@@ -8,6 +8,7 @@
  * dishonest one.
  */
 import { useMetrics } from "../api/hooks";
+import { ArchitectureDiagram } from "../components/ArchitectureDiagram";
 import { WakingNotice } from "../components/WakingNotice";
 
 const SWAPS = [
@@ -60,6 +61,8 @@ export function Architecture() {
         turns those attributions into next actions. Every deal, company and rep
         in this demo is generated.
       </p>
+
+      <ArchitectureDiagram />
 
       {/* ---------- metrics ---------- */}
       <section className="mt-8">

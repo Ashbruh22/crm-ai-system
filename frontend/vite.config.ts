@@ -14,9 +14,19 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router-dom/')) return 'vendor';
-          if (id.includes('node_modules/recharts/')) return 'charts';
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/react-router-dom/')
+          ) {
+            return 'vendor';
+          }
           if (id.includes('node_modules/@tanstack/react-query/')) return 'query';
+          // recharts is deliberately NOT named here. Giving it a manual chunk
+          // put a <link rel="modulepreload"> for 366 kB of charting in the
+          // entry HTML, so every visitor downloaded it before seeing the
+          // pipeline -- even though ScoreHistory is lazily imported. Left
+          // unnamed, it stays inside that lazy chunk and loads on demand.
         }
       }
     }

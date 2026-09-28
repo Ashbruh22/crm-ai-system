@@ -22,7 +22,9 @@ export default {
         ink: {
           DEFAULT: "#16202b",
           muted: "#5a6a7a",
-          faint: "#8b9aa8",
+          // 4.54:1 on paper, 4.87:1 on raised. #8b9aa8 looked right but came
+          // in at 2.54:1, which fails AA for the footer and every caption.
+          faint: "#636f7a",
         },
         rule: {
           DEFAULT: "#d3dae2",
