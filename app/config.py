@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     #: Only turn this off for tests that never touch the models.
     REQUIRE_ARTIFACTS: bool = True
 
+    # --- ingestion bus ------------------------------------------------------
+    #: Run the stream consumer inside this process. One Render service handles
+    #: both the API and scoring; set false to run a consumer separately.
+    RUN_CONSUMER: bool = True
+    #: Identifies this consumer within the group, for pending-list recovery.
+    CONSUMER_NAME: str = "worker-1"
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )

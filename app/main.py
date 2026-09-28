@@ -17,8 +17,8 @@ Phase 2 changes from the original startup path:
 
 from __future__ import annotations
 
+import asyncio
 import logging
-import os
 from contextlib import asynccontextmanager
 
 import redis.asyncio as redis
@@ -29,7 +29,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.config import settings
 from app.middleware import RequestIDMiddleware
 from app.models.registry import ArtifactError, ModelRegistry, registry
-from app.routers import actions, deals, meta, scoring
+from app.routers import actions, deals, events, meta, scoring, stream
 
 log = logging.getLogger("crm_ai")
 
@@ -37,11 +37,11 @@ log = logging.getLogger("crm_ai")
 # model) and the legacy opportunities/predictions tables. They cannot load
 # their models any more, so mounting them would break startup. Each is restored
 # against the new registry in the phase noted:
-#   crm.py                  -> phase 5 (MessageBus + signed webhook)
 #   admin.py, auth.py       -> phase 8 (security pass)
 # Superseded: predict.py + explain.py by routers/scoring.py (phase 3),
-# recommendations.py by agent/nba.py + routers/actions.py (phase 4).
-LEGACY_ROUTERS_DISABLED = ("crm", "admin", "auth")
+# recommendations.py by agent/nba.py + routers/actions.py (phase 4),
+# crm.py by bus/ + routers/events.py (phase 5).
+LEGACY_ROUTERS_DISABLED = ("admin", "auth")
 
 
 @asynccontextmanager
@@ -67,6 +67,24 @@ async def lifespan(app: FastAPI):
         settings.REDIS_URL, encoding="utf-8", decode_responses=True
     )
 
+    # --- bus + broadcaster ----------------------------------------------
+    from app.bus.broadcast import Broadcaster
+    from app.bus.redis_streams import RedisStreamsBus
+
+    app.state.bus = RedisStreamsBus(app.state.redis)
+    app.state.broadcaster = Broadcaster(app.state.redis)
+    app.state.bus_error = None
+
+    from app.bus.redis_streams import StreamsUnsupported
+
+    try:
+        await app.state.bus.assert_streams_supported()
+    except StreamsUnsupported as exc:
+        # Start anyway: everything except event ingestion still works, and a
+        # dead /healthz is a worse way to learn about this than a clear flag.
+        app.state.bus_error = str(exc)
+        log.error("ingestion disabled: %s", exc)
+
     # --- database -------------------------------------------------------
     if settings.SEED_ON_STARTUP:
         try:
@@ -79,7 +97,33 @@ async def lifespan(app: FastAPI):
         except Exception as exc:  # noqa: BLE001 - never block boot on seeding
             log.warning("seeding skipped: %s", exc)
 
+    # --- stream consumer -------------------------------------------------
+    # Runs in-process so the hosted demo is one Render service, not two.
+    consumer_task: asyncio.Task | None = None
+    if settings.RUN_CONSUMER and not app.state.bus_error:
+        from app.consumer import run_consumer
+        from app.db.session import SessionLocal
+
+        consumer_task = asyncio.create_task(
+            run_consumer(
+                app.state.bus,
+                SessionLocal,
+                app.state.redis,
+                app.state.registry,
+                app.state.broadcaster,
+                consumer_name=settings.CONSUMER_NAME,
+            ),
+            name="crm-ai-consumer",
+        )
+
     yield
+
+    if consumer_task is not None:
+        consumer_task.cancel()
+        try:
+            await consumer_task
+        except asyncio.CancelledError:
+            pass
 
     await app.state.redis.aclose()
 
@@ -112,6 +156,9 @@ def create_app() -> FastAPI:
     # Same prefix as deals.py; the paths do not collide ({id} vs {id}/score).
     app.include_router(scoring.router, prefix="/api/deals", tags=["Scoring"])
     app.include_router(actions.router, prefix="/api/actions", tags=["Actions"])
+    app.include_router(events.router, prefix="/api/events", tags=["Events"])
+    app.include_router(events.webhook_router, prefix="/webhooks", tags=["Events"])
+    app.include_router(stream.router, prefix="/api/stream", tags=["Stream"])
     app.include_router(meta.router, prefix="/api/meta", tags=["Meta"])
 
     _register_health(app)
@@ -140,9 +187,30 @@ def _register_health(app: FastAPI) -> None:
         except Exception as exc:  # noqa: BLE001
             db_status = f"error: {type(exc).__name__}"
 
+        bus_status: dict = {}
+        bus = getattr(app.state, "bus", None)
+        bus_error = getattr(app.state, "bus_error", None)
+        if bus_error:
+            bus_status = {"available": False, "error": bus_error}
+        elif bus is not None:
+            try:
+                bus_status = {
+                    "available": True,
+                    "stream_len": await bus.length(),
+                    "pending": await bus.pending_count("crm-ai-scorer"),
+                    "consumer_running": settings.RUN_CONSUMER,
+                }
+            except Exception as exc:  # noqa: BLE001
+                bus_status = {"available": False, "error": type(exc).__name__}
+
         models = reg.health()
+        # Ingestion being down is a real degradation: the demo can still score
+        # on request, but the "fire an event and watch it update" path is dead.
         healthy = (
-            redis_status == "ok" and db_status == "ok" and models["xgb_loaded"]
+            redis_status == "ok"
+            and db_status == "ok"
+            and models["xgb_loaded"]
+            and bus_status.get("available", False)
         )
         return {
             "status": "ok" if healthy else "degraded",
@@ -150,6 +218,7 @@ def _register_health(app: FastAPI) -> None:
             "models": models,
             "db": db_status,
             "redis": redis_status,
+            "bus": bus_status,
             "synthetic_data": True,
         }
 
