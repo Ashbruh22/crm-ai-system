@@ -1,100 +1,263 @@
-import os
-import joblib
-import tensorflow as tf
+"""FastAPI app factory.
+
+Phase 2 changes from the original startup path:
+
+* **No TensorFlow.** The old module scope did ``import tensorflow as tf`` and
+  loaded a ``.keras`` file plus ``ml/xgboost_model.joblib`` — neither of which
+  was committed, so a fresh clone could not boot. Models now come from
+  ``artifacts/`` via ``app.models.registry``: XGBoost from native JSON, the LSTM
+  from ONNX Runtime.
+* **CORS is restricted** to ``ALLOWED_ORIGINS``. It was ``allow_origins=["*"]``
+  with ``allow_credentials=True``, which browsers reject and the spec forbids.
+* **The feature schema is validated at startup** and the app refuses to boot on
+  a mismatch.
+* ``/healthz`` reports model, DB, and Redis status (``/health`` and ``/ready``
+  are kept as aliases so existing probes keep working).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
 from contextlib import asynccontextmanager
+
+import redis.asyncio as redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
-import redis.asyncio as redis
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
 from app.middleware import RequestIDMiddleware
-from app.routers import predict, explain, recommendations, admin, auth, crm
+from app.models.registry import ArtifactError, ModelRegistry, registry
+from app.routers import actions, admin, deals, events, meta, scoring, stream
+from app.security.ratelimit import limiter
+
+log = logging.getLogger("crm_ai")
+
+# Routers still on the pre-phase-1 artifacts (ml/pipeline.joblib, the Keras
+# model) and the legacy opportunities/predictions tables. They cannot load
+# their models any more, so mounting them would break startup. Each is restored
+# against the new registry in the phase noted:
+#   admin.py, auth.py       -> phase 8 (security pass)
+# The pre-phase-1 routers and services have been deleted rather than left as
+# dead code: predict.py + explain.py were superseded by routers/scoring.py,
+# recommendations.py by agent/nba.py + routers/actions.py, crm.py by bus/ +
+# routers/events.py, and the old admin.py by the token-gated reset below.
+# app/routers/auth.py survives only because it carries uncommitted local
+# changes; nothing imports it and it is not mounted.
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load ML artifacts
-    base_dir = os.path.dirname(os.path.dirname(__file__))
-    
-    # XGBoost
-    xgb_path = os.path.join(base_dir, 'ml', 'xgboost_model.joblib')
-    app.state.xgboost_model = joblib.load(xgb_path)
-    
-    # Pipeline
-    pipeline_path = os.path.join(base_dir, 'ml', 'pipeline.joblib')
-    app.state.pipeline = joblib.load(pipeline_path)
-    
-    # LSTM Problem 2 Model
-    lstm_path = os.path.join(base_dir, 'ml', 'lstm_problem2_live_reforecast.keras')
-    app.state.lstm_model = tf.keras.models.load_model(lstm_path)
-    
-    # Assertion as requested: fail loudly if input shape is wrong
-    expected_shape = (None, 60, 7)
-    actual_shape = app.state.lstm_model.input_shape
-    assert actual_shape == expected_shape, f"CRITICAL: LSTM model shape mismatch. Expected {expected_shape}, got {actual_shape}."
-    
-    # Initialize Redis connection
-    app.state.redis = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
-    
+    # --- models ---------------------------------------------------------
+    app.state.registry = registry
+    registry.artifact_dir = settings.ARTIFACT_DIR
+    try:
+        registry.load()
+        if settings.MODEL_VERSION:
+            registry.model_version = settings.MODEL_VERSION
+        log.info("artifacts loaded: %s", registry.health())
+    except ArtifactError:
+        if settings.REQUIRE_ARTIFACTS:
+            # Deliberate: serving a model whose features have drifted produces
+            # confidently wrong explanations, which is worse than not starting.
+            raise
+        log.warning("artifacts unavailable; continuing without models")
+        app.state.registry = ModelRegistry(artifact_dir=settings.ARTIFACT_DIR)
+
+    # --- redis ----------------------------------------------------------
+    app.state.redis = redis.from_url(
+        settings.REDIS_URL, encoding="utf-8", decode_responses=True
+    )
+
+    # --- bus + broadcaster ----------------------------------------------
+    from app.bus.broadcast import Broadcaster
+    from app.bus.redis_streams import RedisStreamsBus
+
+    app.state.bus = RedisStreamsBus(app.state.redis)
+    app.state.broadcaster = Broadcaster(app.state.redis)
+    app.state.bus_error = None
+
+    from app.bus.redis_streams import StreamsUnsupported
+
+    try:
+        await app.state.bus.assert_streams_supported()
+    except StreamsUnsupported as exc:
+        # Start anyway: everything except event ingestion still works, and a
+        # dead /healthz is a worse way to learn about this than a clear flag.
+        app.state.bus_error = str(exc)
+        log.error("ingestion disabled: %s", exc)
+
+    # --- database -------------------------------------------------------
+    if settings.SEED_ON_STARTUP:
+        try:
+            from app.db.session import SessionLocal
+            from app.seed import seed_if_empty
+
+            async with SessionLocal() as session:
+                result = await seed_if_empty(session, settings.SYNTHETIC_DATA_DIR)
+            log.info("seed: %s", result)
+        except Exception as exc:  # noqa: BLE001 - never block boot on seeding
+            log.warning("seeding skipped: %s", exc)
+
+    # --- stream consumer -------------------------------------------------
+    # Runs in-process so the hosted demo is one Render service, not two.
+    consumer_task: asyncio.Task | None = None
+    if settings.RUN_CONSUMER and not app.state.bus_error:
+        from app.consumer import run_consumer
+        from app.db.session import SessionLocal
+
+        consumer_task = asyncio.create_task(
+            run_consumer(
+                app.state.bus,
+                SessionLocal,
+                app.state.redis,
+                app.state.registry,
+                app.state.broadcaster,
+                consumer_name=settings.CONSUMER_NAME,
+            ),
+            name="crm-ai-consumer",
+        )
+
     yield
-    
-    # Cleanup
+
+    if consumer_task is not None:
+        consumer_task.cancel()
+        try:
+            await consumer_task
+        except asyncio.CancelledError:
+            pass
+
     await app.state.redis.aclose()
 
-app = FastAPI(
-    title="CRM AI System",
-    description="Phase 4 Production API Stack",
-    version="1.0.0",
-    lifespan=lifespan,
-    docs_url="/docs" if settings.DOCS_ENABLED else None,
-    redoc_url=None
-)
 
-# Middleware
-app.add_middleware(RequestIDMiddleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def _rate_limit_handler(request, exc: RateLimitExceeded):
+    """429 with an explanation and a Retry-After the client can act on."""
+    from fastapi.responses import JSONResponse
 
-# Prometheus Metrics
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+    retry_after = getattr(exc, "retry_after", None) or 60
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": (
+                "Too many requests. This demo runs on a free-tier container, "
+                f"so calls are capped ({exc.detail}). Try again shortly."
+            )
+        },
+        headers={"Retry-After": str(retry_after)},
+    )
 
-# Include Routers
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
-app.include_router(predict.router, prefix="/api/v1/predict", tags=["Prediction"])
-app.include_router(explain.router, prefix="/api/v1/explain", tags=["Explainability"])
-app.include_router(recommendations.router, prefix="/api/v1/recommendations", tags=["Recommendations"])
-app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
-app.include_router(crm.router, prefix="/api/v1/crm", tags=["CRM Integration"])
 
-@app.get("/health", tags=["System"])
-async def health_check():
-    """Liveness probe. Returns 200 OK immediately without checking dependencies."""
-    return {"status": "ok"}
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="CRM AI Core",
+        description=(
+            "Real-time deal scoring, SHAP explanations, and next-best-action "
+            "recommendations. Runs entirely on synthetic data."
+        ),
+        version="2.0.0",
+        lifespan=lifespan,
+        docs_url="/docs" if settings.DOCS_ENABLED else None,
+        redoc_url=None,
+    )
 
-@app.get("/ready", tags=["System"])
-async def readiness_check():
-    """Readiness probe. Checks DB and Redis connectivity."""
-    db_status = "ok"
-    redis_status = "ok"
-    
-    # Check Redis
-    try:
-        await app.state.redis.ping()
-    except Exception:
-        redis_status = "error"
-        
-    # Check DB
-    try:
-        from app.dependencies import engine
-        async with engine.connect() as conn:
-            pass # Just connecting is enough for a basic check
-    except Exception:
-        db_status = "error"
-        
-    status = "ok" if db_status == "ok" and redis_status == "ok" else "error"
-    return {"status": status, "db_status": db_status, "redis_status": redis_status}
+    # Rate limiting must be installed before the routes that reference it.
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
+    app.add_middleware(SlowAPIMiddleware)
+
+    app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    )
+
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
+    app.include_router(deals.router, prefix="/api/deals", tags=["Deals"])
+    # Same prefix as deals.py; the paths do not collide ({id} vs {id}/score).
+    app.include_router(scoring.router, prefix="/api/deals", tags=["Scoring"])
+    app.include_router(actions.router, prefix="/api/actions", tags=["Actions"])
+    app.include_router(events.router, prefix="/api/events", tags=["Events"])
+    app.include_router(events.webhook_router, prefix="/webhooks", tags=["Events"])
+    app.include_router(stream.router, prefix="/api/stream", tags=["Stream"])
+    app.include_router(meta.router, prefix="/api/meta", tags=["Meta"])
+    app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+
+    _register_health(app)
+    return app
+
+
+def _register_health(app: FastAPI) -> None:
+    async def healthz() -> dict:
+        """Status of models, database, and Redis."""
+        reg: ModelRegistry = getattr(app.state, "registry", registry)
+
+        redis_status = "ok"
+        try:
+            await app.state.redis.ping()
+        except Exception as exc:  # noqa: BLE001
+            redis_status = f"error: {type(exc).__name__}"
+
+        db_status = "ok"
+        try:
+            from sqlalchemy import text
+
+            from app.db.session import engine
+
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        except Exception as exc:  # noqa: BLE001
+            db_status = f"error: {type(exc).__name__}"
+
+        bus_status: dict = {}
+        bus = getattr(app.state, "bus", None)
+        bus_error = getattr(app.state, "bus_error", None)
+        if bus_error:
+            bus_status = {"available": False, "error": bus_error}
+        elif redis_status != "ok":
+            # The bus rides on the same connection. Reporting it available
+            # while Redis is refusing commands is worse than reporting nothing.
+            bus_status = {"available": False, "error": f"redis {redis_status}"}
+        elif bus is not None:
+            try:
+                bus_status = {
+                    "available": True,
+                    "stream_len": await bus.length(),
+                    "pending": await bus.pending_count("crm-ai-scorer"),
+                    "consumer_running": settings.RUN_CONSUMER,
+                }
+            except Exception as exc:  # noqa: BLE001
+                bus_status = {"available": False, "error": type(exc).__name__}
+
+        models = reg.health()
+        # Ingestion being down is a real degradation: the demo can still score
+        # on request, but the "fire an event and watch it update" path is dead.
+        healthy = (
+            redis_status == "ok"
+            and db_status == "ok"
+            and models["xgb_loaded"]
+            and bus_status.get("available", False)
+        )
+        return {
+            "status": "ok" if healthy else "degraded",
+            "version": app.version,
+            "models": models,
+            "db": db_status,
+            "redis": redis_status,
+            "bus": bus_status,
+            "synthetic_data": True,
+        }
+
+    app.add_api_route("/healthz", healthz, methods=["GET"], tags=["System"])
+    # Kept so existing Docker/Render probes do not break.
+    app.add_api_route("/health", healthz, methods=["GET"], tags=["System"])
+    app.add_api_route("/ready", healthz, methods=["GET"], tags=["System"])
+
+
+app = create_app()

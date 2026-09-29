@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "n_features": 32,
+  "features": [
+    {
+      "name": "deal_size_k",
+      "dtype": "float32",
+      "label": "Deal size ($k)"
+    },
+    {
+      "name": "days_open",
+      "dtype": "float32",
+      "label": "Days open"
+    },
+    {
+      "name": "days_since_last_activity",
+      "dtype": "float32",
+      "label": "Days since last touch"
+    },
+    {
+      "name": "n_emails_sent",
+      "dtype": "float32",
+      "label": "Emails sent"
+    },
+    {
+      "name": "n_emails_replied",
+      "dtype": "float32",
+      "label": "Emails replied to"
+    },
+    {
+      "name": "reply_rate",
+      "dtype": "float32",
+      "label": "Email reply rate"
+    },
+    {
+      "name": "n_meetings",
+      "dtype": "float32",
+      "label": "Meetings held"
+    },
+    {
+      "name": "n_demos",
+      "dtype": "float32",
+      "label": "Demos delivered"
+    },
+    {
+      "name": "n_proposals",
+      "dtype": "float32",
+      "label": "Proposals sent"
+    },
+    {
+      "name": "n_stakeholders",
+      "dtype": "float32",
+      "label": "Stakeholders involved"
+    },
+    {
+      "name": "has_champion",
+      "dtype": "float32",
+      "label": "Champion identified"
+    },
+    {
+      "name": "n_discount_requests",
+      "dtype": "float32",
+      "label": "Discount requests"
+    },
+    {
+      "name": "discount_requested_late",
+      "dtype": "float32",
+      "label": "Discount requested late in cycle"
+    },
+    {
+      "name": "n_silence_gaps",
+      "dtype": "float32",
+      "label": "7-day silence gaps"
+    },
+    {
+      "name": "activity_count",
+      "dtype": "float32",
+      "label": "Total activities"
+    },
+    {
+      "name": "activity_per_week",
+      "dtype": "float32",
+      "label": "Activities per week"
+    },
+    {
+      "name": "stage_ordinal",
+      "dtype": "float32",
+      "label": "Pipeline stage"
+    },
+    {
+      "name": "rep_win_rate",
+      "dtype": "float32",
+      "label": "Rep historical win rate"
+    },
+    {
+      "name": "industry_Technology",
+      "dtype": "float32",
+      "label": "Industry technology"
+    },
+    {
+      "name": "industry_Financial Services",
+      "dtype": "float32",
+      "label": "Industry financial services"
+    },
+    {
+      "name": "industry_Healthcare",
+      "dtype": "float32",
+      "label": "Industry healthcare"
+    },
+    {
+      "name": "industry_Manufacturing",
+      "dtype": "float32",
+      "label": "Industry manufacturing"
+    },
+    {
+      "name": "industry_Retail",
+      "dtype": "float32",
+      "label": "Industry retail"
+    },
+    {
+      "name": "industry_Public Sector",
+      "dtype": "float32",
+      "label": "Industry public sector"
+    },
+    {
+      "name": "region_North America",
+      "dtype": "float32",
+      "label": "Region north america"
+    },
+    {
+      "name": "region_EMEA",
+      "dtype": "float32",
+      "label": "Region emea"
+    },
+    {
+      "name": "region_APAC",
+      "dtype": "float32",
+      "label": "Region apac"
+    },
+    {
+      "name": "region_LATAM",
+      "dtype": "float32",
+      "label": "Region latam"
+    },
+    {
+      "name": "source_Inbound",
+      "dtype": "float32",
+      "label": "Source inbound"
+    },
+    {
+      "name": "source_Outbound",
+      "dtype": "float32",
+      "label": "Source outbound"
+    },
+    {
+      "name": "source_Partner",
+      "dtype": "float32",
+      "label": "Source partner"
+    },
+    {
+      "name": "source_Event",
+      "dtype": "float32",
+      "label": "Source event"
+    }
+  ],
+  "sequence": {
+    "len": 60,
+    "features": [
+      "days_since_prev_event",
+      "cum_days_open",
+      "is_engagement",
+      "is_progression",
+      "is_risk",
+      "stage_ordinal",
+      "log_deal_size"
+    ],
+    "padding": "pre"
+  },
+  "vocabularies": {
+    "industry": [
+      "Technology",
+      "Financial Services",
+      "Healthcare",
+      "Manufacturing",
+      "Retail",
+      "Public Sector"
+    ],
+    "region": [
+      "North America",
+      "EMEA",
+      "APAC",
+      "LATAM"
+    ],
+    "source": [
+      "Inbound",
+      "Outbound",
+      "Partner",
+      "Event"
+    ],
+    "stage": [
+      "Prospecting",
+      "Qualification",
+      "Discovery",
+      "Proposal",
+      "Negotiation"
+    ],
+    "activity_type": [
+      "email_sent",
+      "email_replied",
+      "meeting_held",
+      "demo_done",
+      "proposal_sent",
+      "champion_identified",
+      "discount_requested",
+      "stakeholder_added",
+      "no_activity_7d"
+    ]
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "generated_on": "2026-09-29",
+  "model_version": "demo-2026-09-29",
+  "synthetic_data": true,
+  "n_features": 32,
+  "data": {
+    "seed": 42,
+    "world_now": "2026-09-01T00:00:00",
+    "n_historical_deals": 2000,
+    "n_activities": 46135,
+    "n_live_deals": 60,
+    "n_live_activities": 1243,
+    "historical_win_rate": 0.3845,
+    "mean_cycle_days": 89.95,
+    "activities_per_deal": 23.07,
+    "synthetic": true
+  },
+  "demo_models": {
+    "win_probability": {
+      "accuracy": 0.7375,
+      "auc_roc": 0.7882,
+      "precision": 0.7094,
+      "recall": 0.539,
+      "f1": 0.6125,
+      "brier": 0.1805,
+      "best_iteration": 58,
+      "n_train": 1600,
+      "n_test": 400,
+      "positive_rate_test": 0.385
+    },
+    "days_to_close": {
+      "mae_days": 11.052,
+      "rmse_days": 14.349,
+      "baseline_mae_days": 15.165,
+      "improvement_vs_baseline": 0.2712,
+      "n_train": 1600,
+      "n_test": 400,
+      "input_shape": [
+        60,
+        7
+      ],
+      "day_scale": 100.0,
+      "onnx_opset": 17,
+      "onnx_parity": {
+        "n_compared": 256,
+        "max_abs_diff_days": 1.2e-07,
+        "tolerance": 0.001,
+        "passed": true
+      }
+    }
+  },
+  "global_drivers": [
+    {
+      "feature": "has_champion",
+      "label": "Champion identified",
+      "mean_abs_shap": 0.52913
+    },
+    {
+      "feature": "n_silence_gaps",
+      "label": "7-day silence gaps",
+      "mean_abs_shap": 0.43002
+    },
+    {
+      "feature": "reply_rate",
+      "label": "Email reply rate",
+      "mean_abs_shap": 0.25817
+    },
+    {
+      "feature": "days_since_last_activity",
+      "label": "Days since last touch",
+      "mean_abs_shap": 0.23405
+    },
+    {
+      "feature": "n_meetings",
+      "label": "Meetings held",
+      "mean_abs_shap": 0.137
+    },
+    {
+      "feature": "n_emails_replied",
+      "label": "Emails replied to",
+      "mean_abs_shap": 0.13041
+    },
+    {
+      "feature": "deal_size_k",
+      "label": "Deal size ($k)",
+      "mean_abs_shap": 0.12512
+    },
+    {
+      "feature": "n_demos",
+      "label": "Demos delivered",
+      "mean_abs_shap": 0.11316
+    },
+    {
+      "feature": "activity_per_week",
+      "label": "Activities per week",
+      "mean_abs_shap": 0.10917
+    },
+    {
+      "feature": "activity_count",
+      "label": "Total activities",
+      "mean_abs_shap": 0.07474
+    },
+    {
+      "feature": "rep_win_rate",
+      "label": "Rep historical win rate",
+      "mean_abs_shap": 0.06933
+    },
+    {
+      "feature": "days_open",
+      "label": "Days open",
+      "mean_abs_shap": 0.05521
+    }
+  ],
+  "latency_ms": {
+    "measured": 245.27,
+    "measured_at": "2026-09-29",
+    "host": "https://crm-ai-service-k7y7.onrender.com",
+    "server_side_ms": {
+      "p50": 245.27,
+      "p95": 295.92,
+      "min": 242.19,
+      "max": 323.63,
+      "n": 25
+    },
+    "round_trip_ms": {
+      "p50": 563.89,
+      "p95": 622.58,
+      "min": 537.33,
+      "max": 640.1,
+      "n": 25
+    },
+    "per_stage_p50_ms": {
+      "features": 5.17,
+      "xgb": 2.1,
+      "lstm": 0.27,
+      "shap": 0.83,
+      "nba": 0.08,
+      "cache": 235.97
+    },
+    "cold_start_ms": 555.0,
+    "note": "Median server-side scoring time on the hosted free tier, cache bypassed. Round trip includes network."
+  }
+}

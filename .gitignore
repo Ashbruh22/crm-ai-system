@@ -80,3 +80,33 @@ frontend/.vercel/
 scratch/
 reformat.py
 fix_ts.py
+
+# ─── Phase 1: artifacts and synthetic data ───────────────────────────────────
+# artifacts/ IS tracked on purpose. The service loads xgb_model.json and
+# lstm.onnx at startup, so a fresh clone that lacks them cannot boot — which is
+# exactly the bug phase 0 found. They are small (~240 KB together) and the
+# *.joblib / *.h5 / *.keras rules above do not match them.
+
+# A stray sidecar from torch's dynamo exporter would shadow the real weights.
+artifacts/*.onnx.data
+
+# Large synthetic training data: regenerate with `make train` (seeded).
+data/synthetic/deals.csv
+data/synthetic/activities.csv
+
+# The small live demo set IS tracked — the hosted seed command needs it and
+# running the generator on the deploy host is not worth the dependency.
+!data/synthetic/live_deals.csv
+!data/synthetic/live_activities.csv
+
+# Local SQLite database from a containerless run
+demo_local.db
+*.db-journal
+
+# Local scratch and probe scripts kept out of the repo
+app.py
+pipeline.py
+test_phase3.py
+test_probe.py
+test_probe_static.py
+verify_ml.py

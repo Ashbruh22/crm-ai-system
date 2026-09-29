@@ -3,7 +3,76 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-gray-50 text-gray-900;
+  html {
+    -webkit-text-size-adjust: 100%;
   }
+
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    font-variant-ligatures: none;
+  }
+
+  /* Numbers must line up in columns; proportional figures make a table of
+     probabilities impossible to scan down. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    @apply font-mono;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ink ring-offset-2 ring-offset-paper;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* One shared field style so inputs do not drift apart. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 border border-rule-strong
+      bg-paper-raised px-3 py-1.5 text-sm font-medium text-ink
+      transition-colors hover:bg-paper-sunken
+      disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-quiet {
+    @apply border-transparent bg-transparent hover:bg-paper-sunken;
+  }
+
+  /* Range inputs are styled per-engine; without this the what-if sliders
+     look like three different controls across browsers. */
+  .slider {
+    @apply h-1 w-full cursor-pointer appearance-none rounded bg-rule;
+  }
+
+  .slider::-webkit-slider-thumb {
+    @apply h-4 w-4 appearance-none rounded-full border-2 border-paper-raised bg-ink;
+    box-shadow: 0 0 0 1px #16202b;
+  }
+
+  .slider::-moz-range-thumb {
+    @apply h-4 w-4 rounded-full border-2 border-paper-raised bg-ink;
+    box-shadow: 0 0 0 1px #16202b;
+  }
+}
+
+/* The single deliberate motion moment: a score arriving over SSE. */
+@keyframes settle {
+  0% {
+    background-color: theme("colors.lift.wash");
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.just-updated {
+  animation: settle 1.4s ease-out;
 }

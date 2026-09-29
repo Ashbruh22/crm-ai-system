@@ -1,0 +1,12 @@
+{
+  "seed": 42,
+  "world_now": "2026-09-01T00:00:00",
+  "n_historical_deals": 2000,
+  "n_activities": 46135,
+  "n_live_deals": 60,
+  "n_live_activities": 1243,
+  "historical_win_rate": 0.3845,
+  "mean_cycle_days": 89.95,
+  "activities_per_deal": 23.07,
+  "synthetic": true
+}

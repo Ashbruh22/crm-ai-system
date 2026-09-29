@@ -1,0 +1,71 @@
+# Render blueprint for the ML service (spec section 12).
+#
+# Deploy with: Render dashboard -> New -> Blueprint -> point at this repo.
+# Everything except the two secrets below is set from here, so the deployment
+# is reviewable in the repo rather than living in a web form.
+#
+# Redis is NOT declared here. The bus needs Redis >= 5 for streams, and the
+# service is designed against Upstash's free tier; set REDIS_URL by hand to the
+# Upstash connection string (rediss://...). Render's own Key Value works too.
+
+services:
+  - type: web
+    name: crm-ai-service
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+
+    envVars:
+      # --- generated, never committed ---
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_TOKEN
+        # Must be >= 16 chars or admin routes stay disabled. generateValue
+        # produces a long random string.
+        generateValue: true
+
+      # --- wired from the managed database ---
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crm-ai-db
+          property: connectionString
+
+      # --- set by hand after creating the Upstash database ---
+      - key: REDIS_URL
+        sync: false
+
+      # --- set by hand once Vercel has assigned the dashboard a URL ---
+      # Comma-separated. "*" is rejected at startup.
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+      # --- fixed ---
+      - key: WEB_CONCURRENCY
+        # One worker. Each one loads its own copy of XGBoost and the ONNX
+        # session and starts its own stream consumer, so more workers means
+        # more memory and duplicated scoring, not more throughput.
+        value: "1"
+      - key: RUN_CONSUMER
+        value: "true"
+      - key: SEED_ON_STARTUP
+        value: "true"
+      - key: REQUIRE_ARTIFACTS
+        # Refuse to serve a model whose features have drifted from the code.
+        value: "true"
+      - key: DOCS_ENABLED
+        value: "true"
+      - key: WEBHOOK_TIMESTAMP_TOLERANCE
+        value: "300"
+      - key: CRM_SIMULATE_ENABLED
+        value: "true"
+      - key: CRM_WEBHOOK_SECRET
+        generateValue: true
+
+databases:
+  - name: crm-ai-db
+    plan: free
+    databaseName: crm_ai
+    user: crm_ai_app
+    postgresMajorVersion: "16"

@@ -1,0 +1,59 @@
+# Nightly demo reset (spec sections 7, 10).
+#
+# A public demo accumulates whatever visitors do to it: scores, dismissed
+# recommendations, simulated events. This puts the pipeline back to a clean
+# sixty deals every night and re-anchors their timeline to now, so the board
+# does not drift into looking abandoned as the generator's fixed world date
+# recedes.
+#
+# Needs two repository secrets:
+#   DEMO_API_URL   the Render service URL, no trailing slash
+#   DEMO_ADMIN_TOKEN  matching ADMIN_TOKEN in the service environment
+
+name: Nightly demo reset
+
+on:
+  schedule:
+    # 03:15 UTC — outside the hours a reviewer is plausibly clicking around.
+    - cron: "15 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the service
+        # The free tier sleeps. Without this the reset call would be the
+        # request that eats the 30-60s cold start and time out.
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
+              "${{ secrets.DEMO_API_URL }}/healthz" || true)
+            echo "attempt $i: $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 15
+          done
+          echo "service did not wake"; exit 1
+
+      - name: Reset the demo data
+        run: |
+          response=$(curl -s -w '\n%{http_code}' --max-time 120 -X POST \
+            -H "Authorization: Bearer ${{ secrets.DEMO_ADMIN_TOKEN }}" \
+            "${{ secrets.DEMO_API_URL }}/api/admin/reset")
+
+          body=$(echo "$response" | head -n -1)
+          code=$(echo "$response" | tail -n 1)
+
+          echo "$body"
+          if [ "$code" != "200" ]; then
+            echo "reset failed with HTTP $code"
+            exit 1
+          fi
+
+      - name: Confirm the pipeline is back
+        run: |
+          count=$(curl -s --max-time 60 \
+            "${{ secrets.DEMO_API_URL }}/api/deals?limit=1" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["total"])')
+          echo "open deals: $count"
+          test "$count" -gt 0
