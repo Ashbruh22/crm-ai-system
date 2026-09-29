@@ -12,6 +12,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from sqlalchemy.pool import NullPool
 
 # Settings are read at import time, so the environment must be complete before
 # anything under app.* is imported.
@@ -37,25 +38,49 @@ def anyio_backend():
     return "asyncio"
 
 
+#: Where the suite's tables live. Defaults to in-memory SQLite, which needs no
+#: container and is what a developer runs locally. CI also runs the whole suite
+#: against the PostgreSQL service container by setting this — that run is what
+#: catches dialect-specific mistakes, and without it the matrix would be two
+#: identical SQLite runs wearing different labels.
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL", "sqlite+aiosqlite:///:memory:"
+)
+IS_SQLITE = TEST_DATABASE_URL.startswith("sqlite")
+
+
 @pytest.fixture
 async def engine():
-    """A fresh in-memory database per test, with the full schema created."""
+    """A fresh database per test, with the full schema created."""
     from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy.pool import StaticPool
 
     from app.db.models import Base
     import app.db.models  # noqa: F401  (registers the demo tables)
 
-    eng = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        # One shared connection, or ":memory:" gives each checkout its own
-        # empty database and nothing persists between statements.
-        poolclass=StaticPool,
-    )
+    if IS_SQLITE:
+        eng = create_async_engine(
+            TEST_DATABASE_URL,
+            connect_args={"check_same_thread": False},
+            # One shared connection, or ":memory:" gives each checkout its own
+            # empty database and nothing persists between statements.
+            poolclass=StaticPool,
+        )
+    else:
+        # A real server: no shared-connection trick, but the tables must be
+        # dropped between tests or state leaks from one to the next.
+        eng = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+
     async with eng.begin() as conn:
+        if not IS_SQLITE:
+            await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+
     yield eng
+
+    if not IS_SQLITE:
+        async with eng.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
     await eng.dispose()
 
 

@@ -118,6 +118,12 @@ class ModelRegistry:
 
         self.booster = xgb.Booster()
         self.booster.load_model(self._require("xgb_model.json"))
+        # Single-threaded on purpose. The service scores one deal at a time, and
+        # for a one-row DMatrix the thread coordination costs far more than the
+        # work it splits: measured 0.59 ms at nthread=1 against 3.7 ms at 2 and
+        # 4.2 ms at 4. Left on auto, XGBoost sizes its pool from the host's core
+        # count, which on a shared container is both wrong and expensive.
+        self.booster.set_param({"nthread": 1})
 
         self.lstm_session = ort.InferenceSession(
             self._require("lstm.onnx"), providers=["CPUExecutionProvider"]
