@@ -1,11 +1,10 @@
-"""Kafka adapter — the paper's ingestion path, kept runnable locally.
+"""Kafka adapter — the original ingestion path, kept runnable locally.
 
     docker compose --profile kafka up
 
-The peer-reviewed system ingests through Apache Kafka. This adapter keeps that
-path alive behind the same ``MessageBus`` interface the hosted demo uses, so the
-architecture in the paper and the architecture on Render differ by one
-constructor call.
+The original system design ingests through Apache Kafka. This adapter keeps
+that path alive behind the same ``MessageBus`` interface the hosted demo uses,
+so the two architectures differ by one constructor call.
 
 **Honesty note.** The original repository never contained Kafka code — "kafka"
 appeared only in a docstring describing future work. This adapter was written

@@ -1,6 +1,6 @@
 {
-  "generated_on": "2026-09-28",
-  "model_version": "demo-2026-09-28",
+  "generated_on": "2026-09-29",
+  "model_version": "demo-2026-09-29",
   "synthetic_data": true,
   "n_features": 32,
   "data": {
@@ -48,13 +48,6 @@
         "passed": true
       }
     }
-  },
-  "paper_reference": {
-    "source": "ICIDS 2026 paper, real pilot CRM data (not in this repo)",
-    "win_model_accuracy": 0.873,
-    "win_model_auc_roc": 0.92,
-    "reproducible_here": false,
-    "note": "Measured on the partner organisation's real CRM data under the original pilot. The data cannot be published, so these numbers cannot be regenerated from this repository."
   },
   "global_drivers": [
     {
@@ -120,6 +113,6 @@
   ],
   "latency_ms": {
     "measured": null,
-    "note": "Measured on the hosted deployment in phase 9 and reported in the README. Not yet measured; the paper's 180 ms figure is from different hardware and is not reused here."
+    "note": "Measured on the hosted deployment in phase 9 and reported in the README. Not yet measured, and no figure is quoted until it is."
   }
 }

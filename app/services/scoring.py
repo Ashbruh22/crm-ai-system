@@ -15,7 +15,7 @@ Latency
 -------
 Reported per stage (features / xgb / lstm / shap / total) rather than as one
 number, because "which part is slow" is the question worth answering, and the
-README has to quote a measured figure rather than the paper's 180 ms.
+README quotes a measured figure or none at all.
 """
 
 from __future__ import annotations

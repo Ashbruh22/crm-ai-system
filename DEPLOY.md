@@ -81,9 +81,9 @@ Actions**):
 
 ## 6. Measure the latency
 
-`artifacts/metrics.json` ships with `latency_ms.measured: null` on purpose. The
-paper's 180 ms was measured on different hardware and is not reused. Fill it in
-from the real deployment:
+`artifacts/metrics.json` ships with `latency_ms.measured: null` on purpose: no
+figure is quoted until one has actually been observed. Fill it in from the real
+deployment:
 
 ```
 python training/measure_latency.py --url https://<your-service>.onrender.com

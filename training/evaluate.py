@@ -5,10 +5,8 @@ Writes to ``artifacts/``:
 * ``metrics.json``   what ``GET /api/meta/metrics`` serves
 * ``model_card.md``  data, features, metrics, limitations, disclaimer
 
-The paper's pilot metrics and this demo's synthetic metrics are kept in two
-separate blocks and never averaged, blended, or presented as one number. The
-demo models are retrained on generated data and score materially lower; saying
-so plainly is the point.
+Metrics here describe the demo models only, and every one of them is
+reproducible from this repository by rerunning `make train` from the seed.
 
 Global driver importance uses XGBoost's own TreeSHAP (``pred_contribs=True``)
 rather than the ``shap`` package, matching what the service serves. The shap
@@ -39,21 +37,6 @@ SEED = 42
 DATA_DIR = os.path.join(REPO_ROOT, "data", "synthetic")
 ARTIFACT_DIR = os.path.join(REPO_ROOT, "artifacts")
 
-#: Metrics reported in the peer-reviewed paper, measured on the real pilot CRM
-#: data. Quoted here for comparison only — NOT reproducible from this repo,
-#: which contains no pilot data.
-PAPER_METRICS = {
-    "source": "ICIDS 2026 paper, real pilot CRM data (not in this repo)",
-    "win_model_accuracy": 0.873,
-    "win_model_auc_roc": 0.92,
-    "reproducible_here": False,
-    "note": (
-        "Measured on the partner organisation's real CRM data under the "
-        "original pilot. The data cannot be published, so these numbers "
-        "cannot be regenerated from this repository."
-    ),
-}
-
 SHAP_SAMPLE = 400
 TOP_K = 12
 
@@ -81,7 +64,6 @@ def render_model_card(metrics: dict) -> str:
     win = demo["win_probability"]
     cyc = demo["days_to_close"]
     data = metrics["data"]
-    paper = metrics["paper_reference"]
     drivers = metrics["global_drivers"]
 
     driver_rows = "\n".join(
@@ -96,11 +78,10 @@ def render_model_card(metrics: dict) -> str:
 > ## Synthetic data only
 > Both models below are trained on **generated data** from
 > `training/generate_synthetic.py`. No real CRM records, customer names, or
-> pilot data are used anywhere in this repository.
+> production data are used anywhere in this repository.
 >
-> The metrics in the peer-reviewed paper were measured on the partner
-> organisation's real pilot data and are **higher**. The two sets are listed
-> separately and must not be compared as like for like or averaged together.
+> Every figure on this card was measured on synthetic data and is reproducible
+> by rerunning `make train` from the seed.
 
 ## Intended use
 
@@ -168,22 +149,6 @@ The LSTM is trained in PyTorch and served through ONNX Runtime. Neither PyTorch
 nor TensorFlow is installed in the runtime image; the parity check above
 confirms the exported graph reproduces the framework output.
 
-## Paper metrics (real pilot data — for reference only)
-
-| Metric | Value |
-|---|---|
-| Accuracy | {paper['win_model_accuracy']:.1%} |
-| AUC-ROC | {paper['win_model_auc_roc']:.2f} |
-| Reproducible from this repo | **No** |
-
-{paper['note']}
-
-**Why the demo scores lower:** the generator's signal is deliberately noisy
-(`NOISE_SD`), it has fewer features than the pilot pipeline, and it contains
-none of the firmographic and historical-relationship context that the real CRM
-carried. A synthetic model matching 0.92 AUC would mean the generator had
-leaked the label, not that the model was good.
-
 ## Top global drivers (mean |SHAP|)
 
 | # | Driver | Mean abs SHAP |
@@ -203,10 +168,6 @@ leaked the label, not that the model was good.
 - The days-to-close model sees only activity cadence and deal size — not
   seasonality, quota pressure, or procurement cycles.
 
-## Credits
-
-Peer-reviewed research (ICIDS 2026) with co-author and faculty mentor credited
-in the repository README, which also links the paper.
 """
 
 
@@ -251,14 +212,13 @@ def main() -> None:
             "win_probability": xgb_metrics,
             "days_to_close": lstm_metrics,
         },
-        "paper_reference": PAPER_METRICS,
         "global_drivers": drivers,
         "latency_ms": {
             "measured": None,
             "note": (
                 "Measured on the hosted deployment in phase 9 and reported in "
-                "the README. Not yet measured; the paper's 180 ms figure is "
-                "from different hardware and is not reused here."
+                "the README. Not yet measured, and no figure is quoted until "
+                "it is."
             ),
         },
     }

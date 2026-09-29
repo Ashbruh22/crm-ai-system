@@ -203,17 +203,15 @@ async def test_unknown_deal_is_404(client):
 # --- meta ------------------------------------------------------------------
 
 
-async def test_meta_metrics_keeps_paper_and_demo_apart(client):
+async def test_meta_metrics_are_labelled_synthetic(client):
     body = (await client.get("/api/meta/metrics")).json()
 
     assert body["demo"]["synthetic_data"] is True
     assert "synthetic" in body["demo"]["label"].lower()
-    assert body["paper"]["reproducible_here"] is False
-    assert "pilot" in body["paper"]["label"].lower()
+    assert 0.0 < body["demo"]["win_probability"]["auc_roc"] < 1.0
 
-    demo_auc = body["demo"]["win_probability"]["auc_roc"]
-    paper_auc = body["paper"]["win_model_auc_roc"]
-    assert demo_auc != paper_auc
+    # Nothing here may present a figure the repo cannot regenerate.
+    assert "paper" not in body
     assert body["latency_ms"]["measured"] is None
 
 

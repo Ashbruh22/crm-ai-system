@@ -8,7 +8,6 @@ the work developed.
 on partial data and earlier versions of the pipeline, so they do not match
 either of the two metric sets that matter:
 
-- the **paper's** results, measured on the real pilot data — see the README
 - the **demo's** results, reproducible from this repository — see
   `artifacts/metrics.json` and `artifacts/model_card.md`
 

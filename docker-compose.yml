@@ -3,7 +3,7 @@
 #   docker compose up                    api + postgres + redis (what Render runs)
 #   docker compose --profile proxy up    adds nginx
 #   docker compose --profile mlops up    adds the Celery drift/retrain workers
-#   docker compose --profile kafka up    runs the paper's Kafka ingestion path
+#   docker compose --profile kafka up    runs the original Kafka ingestion path
 #   docker compose --profile all up      everything
 #
 # The default set is deliberately the three services the hosted demo actually
@@ -110,7 +110,7 @@ services:
       - celery_beat_data:/app/beat
     restart: unless-stopped
 
-  # The paper's ingestion path, kept runnable (spec section 1). The hosted
+  # The original ingestion path, kept runnable (spec section 1). The hosted
   # demo uses Redis Streams; this profile exists so the Kafka adapter in
   # app/bus/kafka.py can be exercised against a real broker locally.
   kafka:

@@ -4,7 +4,7 @@ These guard the three things that would break a deploy silently:
 
 * the frozen feature schema drifting from the code,
 * the ONNX graph carrying weights in a sidecar file or refusing batches, and
-* paper metrics leaking into the demo metrics block.
+* metrics losing the label that says they are synthetic.
 """
 
 from __future__ import annotations
@@ -136,17 +136,14 @@ def test_runtime_requirements_exclude_the_shap_package():
     assert not any(r.lower().startswith("shap") for r in runtime), runtime
 
 
-def test_metrics_keep_paper_and_demo_separate():
+def test_metrics_are_labelled_synthetic_and_plausible():
     metrics = _load("metrics.json")
 
     assert metrics["synthetic_data"] is True
     demo = metrics["demo_models"]
-    paper = metrics["paper_reference"]
 
-    assert paper["reproducible_here"] is False
-    assert "pilot" in paper["source"].lower()
-    # The demo block must not carry the paper's numbers.
-    assert demo["win_probability"]["auc_roc"] != paper["win_model_auc_roc"]
+    # No metric block may claim a provenance the repo cannot reproduce.
+    assert "paper_reference" not in metrics
     assert 0.0 < demo["win_probability"]["auc_roc"] < 1.0
     assert demo["days_to_close"]["mae_days"] > 0
 
@@ -173,6 +170,6 @@ def test_model_card_carries_the_synthetic_disclaimer():
         card = fh.read().lower()
     assert "synthetic data only" in card
     assert "no real crm records" in card
-    # The card must show the paper's numbers as reference, clearly labelled.
-    assert "paper metrics" in card
-    assert "reference only" in card
+    # Every figure on the card must be reproducible from this repository.
+    assert "reproducible" in card
+    assert "paper" not in card

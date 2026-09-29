@@ -1,6 +1,6 @@
 """Ingestion bus (spec section 1).
 
-The paper's system ingests through Apache Kafka. Kafka has no reasonable free
+The original design ingests through Apache Kafka. Kafka has no reasonable free
 hosting, so the hosted demo runs on Redis Streams instead — behind a
 ``MessageBus`` interface, so the choice is a deployment detail rather than a
 rewrite.

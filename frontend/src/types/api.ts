@@ -152,16 +152,9 @@ export interface MetricsResponse {
     days_to_close: Record<string, unknown>;
     data: Record<string, unknown>;
   };
-  paper: {
-    label: string;
-    reproducible_here: boolean;
-    win_model_accuracy: number;
-    win_model_auc_roc: number;
-    note: string;
-  };
   global_drivers: Array<{ feature: string; label: string; mean_abs_shap: number }>;
   latency_ms: { measured: number | null; note: string };
-  comparison_note: string;
+  note: string;
 }
 
 export interface HealthResponse {

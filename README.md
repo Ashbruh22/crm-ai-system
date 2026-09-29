@@ -1,15 +1,13 @@
 # CRM AI Core
 
 Scores open sales deals in real time, explains every score, and turns the
-explanation into a next action. Peer-reviewed research (ICIDS 2026), rebuilt as
-a public demo that runs entirely on synthetic data.
+explanation into a next action. Runs entirely on synthetic data.
 
-**[Live demo](https://REPLACE-ME.vercel.app)** · **[Paper](https://REPLACE-ME)** ·
+**[Live demo](https://REPLACE-ME.vercel.app)** ·
 [Model card](artifacts/model_card.md) · [Deploying it yourself](DEPLOY.md)
 
-> Every deal, company and sales rep in the demo is generated. No real CRM data,
-> customer names, or anything from the original pilot appears in this
-> repository.
+> Every deal, company and sales rep in the demo is generated. No real CRM data
+> or customer names appear anywhere in this repository.
 
 <!-- TODO: 60-90s demo recording. Show the pipeline, open a deal, point at the
      contribution ledger, then send an event and let the score move on camera. -->
@@ -49,7 +47,7 @@ attributions into next actions. The whole path runs on every ingested event.
 
 ### What changed to make it hostable
 
-| Layer | Paper | Here | Why |
+| Layer | Originally | Here | Why |
 |---|---|---|---|
 | Ingestion | REST, webhooks, Apache Kafka | REST + signed webhook → Redis Streams | Kafka has no free hosting. Both sit behind one `MessageBus` interface, and the Kafka adapter still runs via `docker compose --profile kafka up`. |
 | Features | Streaming pipeline | The same feature code, run by the stream consumer | Unchanged. Training and serving import one module, so they cannot drift. |
@@ -59,9 +57,7 @@ attributions into next actions. The whole path runs on every ingested event.
 
 ## Metrics
 
-Two separate sets. They are not comparable and are never averaged.
-
-### Demo models — synthetic data, reproducible from this repository
+Measured on synthetic data, reproducible from this repository.
 
 | Win probability (XGBoost) | | Days to close (LSTM → ONNX) | |
 |---|---|---|---|
@@ -73,29 +69,19 @@ Two separate sets. They are not comparable and are never averaged.
 
 Held out from 2,000 generated deals and 46,135 activity events.
 
-### Paper — real pilot data, not in this repository
+The generator carries deliberate noise, so these are the numbers a model can
+reach on data with genuine uncertainty in it. A near-perfect score here would
+mean the generator had leaked the label, not that the model was good.
 
-| Metric | Value |
-|---|---|
-| Accuracy | 87.3% |
-| AUC-ROC | 0.92 |
-| Reproducible here | **No** |
-
-The pilot data cannot be published, so those figures cannot be regenerated from
-this repo. The demo models score lower because the generator is deliberately
-noisy, has fewer features, and carries none of the firmographic or relationship
-context the real CRM had. A synthetic model matching 0.92 AUC would mean the
-generator had leaked the label, not that the model was good.
-
-`models/` holds result files from individual experiment runs during the original
-research — intermediate evaluations on partial data and earlier pipelines, kept
-as a record of how the work developed. They are not the paper's reported
-results and not the demo's; the two sets above are the ones to read.
+`models/` holds result files from individual experiment runs during earlier
+development — intermediate evaluations on partial data and older pipelines, kept
+as a record of how the work progressed. They are not the demo's results; the
+table above is.
 
 **Scoring latency is measured, not quoted.** `artifacts/metrics.json` carries
 `latency_ms.measured: null` until someone runs
 `python training/measure_latency.py --url <service>` against a real deployment.
-The paper's figure was measured on different hardware and is not reused.
+No figure appears until one has actually been observed.
 
 ## API
 
@@ -112,7 +98,7 @@ The paper's figure was measured on different hardware and is not reused.
 | `GET /api/actions` | The recommendation queue |
 | `PATCH /api/actions/{id}` | Accept or dismiss a recommendation |
 | `GET /api/stream` | Server-Sent Events: `score_updated`, `action_created` |
-| `GET /api/meta/metrics` | Demo metrics, with the paper's kept separate |
+| `GET /api/meta/metrics` | Demo model metrics |
 | `POST /api/admin/reset` | Re-seed the demo (admin token) |
 
 Interactive docs at `/docs`.
@@ -125,7 +111,7 @@ docker compose up          # api + postgres + redis, the hosted topology
 
 Then <http://localhost:8000/healthz>. Optional profiles: `--profile proxy`
 (nginx), `--profile mlops` (Celery drift/retrain workers), `--profile kafka`
-(the paper's ingestion path).
+(the original Kafka ingestion path).
 
 Dashboard:
 
@@ -190,17 +176,3 @@ PostgreSQL run is what catches dialect-specific mistakes.
   wakes it and takes 30–60 seconds. The dashboard says so rather than spinning.
 
 Full detail in the [model card](artifacts/model_card.md).
-
-## Credits
-
-Research and system by **Ashriwad Behera**, with co-author **REPLACE-ME** and
-faculty mentor **REPLACE-ME**. Published at ICIDS 2026.
-
-```bibtex
-@inproceedings{REPLACE-ME,
-  title     = {REPLACE-ME},
-  author    = {REPLACE-ME},
-  booktitle = {ICIDS},
-  year      = {2026}
-}
-```

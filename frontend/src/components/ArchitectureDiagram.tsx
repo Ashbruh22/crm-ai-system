@@ -2,7 +2,7 @@
  * The five layers, drawn as the path one event actually takes.
  *
  * Deliberately not a box-and-arrow decoration: each band names the component
- * that runs, and the right-hand column names what the paper used where the demo
+ * that runs, and the right-hand column names what the original used where the demo
  * differs. The vertical flow is what makes it work on a phone — five layers
  * side by side would be illegible below ~700px.
  *
@@ -14,7 +14,7 @@ interface Layer {
   n: number;
   name: string;
   here: string;
-  paper?: string;
+  original?: string;
 }
 
 const LAYERS: Layer[] = [
@@ -22,7 +22,7 @@ const LAYERS: Layer[] = [
     n: 1,
     name: "Ingestion",
     here: "REST + signed webhook → Redis Streams",
-    paper: "Kafka",
+    original: "Kafka",
   },
   {
     n: 2,
@@ -33,7 +33,7 @@ const LAYERS: Layer[] = [
     n: 3,
     name: "Inference",
     here: "XGBoost + LSTM (ONNX), Redis cache",
-    paper: "TensorFlow",
+    original: "TensorFlow",
   },
   {
     n: 4,
@@ -44,7 +44,7 @@ const LAYERS: Layer[] = [
     n: 5,
     name: "Action",
     here: "Dashboard + action ledger",
-    paper: "CRM write-back",
+    original: "CRM write-back",
   },
 ];
 
@@ -144,8 +144,8 @@ export function ArchitectureDiagram() {
                 {layer.here}
               </text>
 
-              {/* What the paper used, where it differs. */}
-              {layer.paper && (
+              {/* What the original design used, where it differs. */}
+              {layer.original && (
                 <>
                   <line
                     x1={LEFT + BAND_W}
@@ -162,7 +162,7 @@ export function ArchitectureDiagram() {
                     fontSize="11"
                     className="fill-ink-faint"
                   >
-                    paper used
+                    was
                   </text>
                   <text
                     x={LEFT + BAND_W + 26}
@@ -170,7 +170,7 @@ export function ArchitectureDiagram() {
                     fontSize="12"
                     className="fill-ink-muted"
                   >
-                    {layer.paper}
+                    {layer.original}
                   </text>
                 </>
               )}

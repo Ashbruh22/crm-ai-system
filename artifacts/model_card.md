@@ -1,15 +1,14 @@
 # Model card — CRM AI Core (hosted demo)
 
-**Generated:** 2026-09-28 · **Model version:** `demo-2026-09-28`
+**Generated:** 2026-09-29 · **Model version:** `demo-2026-09-29`
 
 > ## Synthetic data only
 > Both models below are trained on **generated data** from
 > `training/generate_synthetic.py`. No real CRM records, customer names, or
-> pilot data are used anywhere in this repository.
+> production data are used anywhere in this repository.
 >
-> The metrics in the peer-reviewed paper were measured on the partner
-> organisation's real pilot data and are **higher**. The two sets are listed
-> separately and must not be compared as like for like or averaged together.
+> Every figure on this card was measured on synthetic data and is reproducible
+> by rerunning `make train` from the seed.
 
 ## Intended use
 
@@ -77,22 +76,6 @@ The LSTM is trained in PyTorch and served through ONNX Runtime. Neither PyTorch
 nor TensorFlow is installed in the runtime image; the parity check above
 confirms the exported graph reproduces the framework output.
 
-## Paper metrics (real pilot data — for reference only)
-
-| Metric | Value |
-|---|---|
-| Accuracy | 87.3% |
-| AUC-ROC | 0.92 |
-| Reproducible from this repo | **No** |
-
-Measured on the partner organisation's real CRM data under the original pilot. The data cannot be published, so these numbers cannot be regenerated from this repository.
-
-**Why the demo scores lower:** the generator's signal is deliberately noisy
-(`NOISE_SD`), it has fewer features than the pilot pipeline, and it contains
-none of the firmographic and historical-relationship context that the real CRM
-carried. A synthetic model matching 0.92 AUC would mean the generator had
-leaked the label, not that the model was good.
-
 ## Top global drivers (mean |SHAP|)
 
 | # | Driver | Mean abs SHAP |
@@ -123,7 +106,3 @@ leaked the label, not that the model was good.
 - The days-to-close model sees only activity cadence and deal size — not
   seasonality, quota pressure, or procurement cycles.
 
-## Credits
-
-Peer-reviewed research (ICIDS 2026) with co-author and faculty mentor credited
-in the repository README, which also links the paper.

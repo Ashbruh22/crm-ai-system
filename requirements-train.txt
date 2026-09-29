@@ -30,7 +30,7 @@ scikit-learn==1.5.2
 # ─── Synthetic data generation ───────────────────────────────────────────────
 faker==30.8.2
 
-# ─── Optional: the paper's Kafka ingestion path ─────────────────────────────
+# ─── Optional: the original Kafka ingestion path ────────────────────────────
 # Only needed for `docker compose --profile kafka up`. The hosted demo runs
 # RedisStreamsBus and never imports this.
 aiokafka>=0.10

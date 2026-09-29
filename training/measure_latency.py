@@ -2,11 +2,10 @@
 
     python training/measure_latency.py --url https://your-service.onrender.com
 
-``artifacts/metrics.json`` ships with ``latency_ms.measured: null`` on purpose.
-The paper quotes 180 ms, measured on different hardware against different data;
-reusing it would be inventing a result. This script produces a real number from
-a real deployment and writes it back, so the README and the architecture page
-quote something that was actually observed.
+``artifacts/metrics.json`` ships with ``latency_ms.measured: null`` on purpose:
+quoting a figure measured on other hardware would be inventing a result. This
+script produces a real number from a real deployment and writes it back, so the
+README and the architecture page quote something that was actually observed.
 
 What it reports, and why it is not one number:
 
@@ -166,8 +165,7 @@ def main() -> None:
         "cold_start_ms": round(first_wall, 0),
         "note": (
             "Median server-side scoring time on the hosted free tier, cache "
-            "bypassed. Round trip includes network. The paper's 180 ms was "
-            "measured on different hardware and is not reused."
+            "bypassed. Round trip includes network."
         ),
     }
 

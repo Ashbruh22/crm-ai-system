@@ -1,6 +1,6 @@
 """Next-best-action rules (spec section 8).
 
-The paper's hierarchical decision tree, written out as explicit rules. Each rule
+The original hierarchical decision tree, written out as explicit rules. Each
 has an id, a condition over the features / SHAP values / score, an action, a
 priority, and a reason that **cites the drivers** rather than restating the
 probability.

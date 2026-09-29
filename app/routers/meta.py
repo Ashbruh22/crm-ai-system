@@ -1,6 +1,6 @@
 """Metrics and model-card metadata (spec section 7).
 
-``GET /api/meta/metrics``     demo metrics, with the paper's kept separate
+``GET /api/meta/metrics``     demo model metrics
 ``GET /api/meta/model-card``  the rendered model card
 ``GET /api/meta/features``    the frozen feature schema, for the SHAP chart labels
 """
@@ -21,8 +21,8 @@ router = APIRouter()
 async def get_metrics() -> dict:
     """Demo model metrics, read from artifacts/metrics.json.
 
-    The response keeps ``demo`` and ``paper`` in separate objects and labels both,
-    so the dashboard cannot accidentally present a pilot number as a demo one.
+    Everything here was measured on synthetic data and is labelled as such, so
+    the dashboard cannot present it as anything else.
     """
     metrics = registry.metrics
     if not metrics:
@@ -42,17 +42,11 @@ async def get_metrics() -> dict:
             "days_to_close": demo.get("days_to_close", {}),
             "data": metrics.get("data", {}),
         },
-        "paper": {
-            "label": "Paper (real pilot data)",
-            "reproducible_here": False,
-            **metrics.get("paper_reference", {}),
-        },
         "global_drivers": metrics.get("global_drivers", []),
         "latency_ms": metrics.get("latency_ms", {}),
-        "comparison_note": (
-            "Demo models are retrained on generated data and score lower than "
-            "the paper's pilot models. The two sets are not comparable and are "
-            "never averaged."
+        "note": (
+            "Measured on generated data and reproducible from the repository "
+            "by rerunning `make train` from the seed."
         ),
     }
 

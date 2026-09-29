@@ -1,11 +1,10 @@
 /**
  * How it works, and what the numbers do and do not mean.
  *
- * The metrics comparison is the reason this page exists. The paper's figures were
- * measured on real pilot data that cannot be published; the demo's models are
- * retrained on generated data and score lower. Presenting them side by side with
- * both labelled is the honest treatment, and conflating them would be the easy
- * dishonest one.
+ * Every figure on this page was measured on synthetic data and says so. The
+ * design decisions listed below are the interesting part: each one names what
+ * the original system did, what this demo does instead, and why the swap was
+ * necessary to host it on a free tier.
  */
 import { useMetrics } from "../api/hooks";
 import { ArchitectureDiagram } from "../components/ArchitectureDiagram";
@@ -14,31 +13,31 @@ import { WakingNotice } from "../components/WakingNotice";
 const SWAPS = [
   {
     layer: "Ingestion",
-    paper: "REST, webhooks, Apache Kafka",
+    original: "REST, webhooks, Apache Kafka",
     demo: "REST + signed webhook onto Redis Streams",
     why: "Kafka has no free hosting. Both sit behind one MessageBus interface, and the Kafka adapter still runs locally.",
   },
   {
     layer: "Feature engineering",
-    paper: "Streaming feature pipeline",
+    original: "Streaming feature pipeline",
     demo: "The same feature code, run by the stream consumer",
     why: "Unchanged. Training and serving import one module, so they cannot drift.",
   },
   {
     layer: "Inference",
-    paper: "XGBoost + LSTM, Redis cache",
+    original: "XGBoost + LSTM, Redis cache",
     demo: "XGBoost native + LSTM via ONNX Runtime",
     why: "TensorFlow alone is ~600 MB against a 512 MB budget. The LSTM is exported to ONNX and checked for parity.",
   },
   {
     layer: "Explainability and actions",
-    paper: "SHAP + hierarchical decision tree",
+    original: "SHAP + hierarchical decision tree",
     demo: "XGBoost TreeSHAP + the same rule tree",
     why: "Same algorithm, computed by the library that built the trees, so contributions sum exactly to the prediction.",
   },
   {
     layer: "Presentation",
-    paper: "Write back to the CRM",
+    original: "Write back to the CRM",
     demo: "This dashboard plus an action ledger",
     why: "A public demo should not write to anyone's CRM.",
   },
@@ -72,44 +71,50 @@ export function Architecture() {
 
         <div className="mt-4 grid gap-6 sm:grid-cols-2">
           <div>
-            <h3 className="text-sm font-medium">Demo models</h3>
-            <p className="text-micro text-ink-faint">
-              trained on synthetic data, reproducible from this repository
-            </p>
+            <h3 className="text-sm font-medium">Win probability</h3>
+            <p className="text-micro text-ink-faint">XGBoost classifier</p>
             <dl className="mt-3 space-y-1.5 text-sm">
               <Metric label="Accuracy" value={fmt(demo.accuracy)} />
               <Metric label="AUC-ROC" value={fmt(demo.auc_roc)} />
               <Metric label="Precision" value={fmt(demo.precision)} />
               <Metric label="Recall" value={fmt(demo.recall)} />
-              <Metric
-                label="Days-to-close error"
-                value={cycle.mae_days ? `${cycle.mae_days.toFixed(1)} days` : "—"}
-              />
+              <Metric label="Brier score" value={fmt(demo.brier)} />
             </dl>
           </div>
 
           <div>
-            <h3 className="text-sm font-medium">Published paper</h3>
-            <p className="text-micro text-ink-faint">
-              measured on the real pilot CRM data, which is not in this repository
-            </p>
+            <h3 className="text-sm font-medium">Days to close</h3>
+            <p className="text-micro text-ink-faint">LSTM, served as ONNX</p>
             <dl className="mt-3 space-y-1.5 text-sm">
               <Metric
-                label="Accuracy"
-                value={fmt(data?.paper.win_model_accuracy)}
+                label="Mean error"
+                value={cycle.mae_days ? `${cycle.mae_days.toFixed(1)} days` : "—"}
               />
-              <Metric label="AUC-ROC" value={fmt(data?.paper.win_model_auc_roc)} />
-              <Metric label="Reproducible here" value="No" />
+              <Metric
+                label="Baseline error"
+                value={
+                  cycle.baseline_mae_days
+                    ? `${cycle.baseline_mae_days.toFixed(1)} days`
+                    : "—"
+                }
+              />
+              <Metric
+                label="Better than baseline"
+                value={
+                  cycle.improvement_vs_baseline
+                    ? `${(cycle.improvement_vs_baseline * 100).toFixed(0)}%`
+                    : "—"
+                }
+              />
             </dl>
           </div>
         </div>
 
         <p className="mt-5 max-w-prose border-l-2 border-rule-strong pl-3 text-sm leading-relaxed text-ink-muted">
-          These two sets are not comparable and are never averaged. The demo
-          models see a deliberately noisy generator with fewer features and none
-          of the firmographic context the real CRM carried. A synthetic model
-          matching the paper's 0.92 AUC would mean the generator had leaked the
-          label, not that the model was good.
+          Held out from {"2,000"} generated deals. The generator carries
+          deliberate noise, so these are the numbers a model can reach on data
+          with real uncertainty in it — a near-perfect score here would mean the
+          generator had leaked the answer, not that the model was good.
         </p>
       </section>
 
@@ -124,11 +129,11 @@ export function Architecture() {
               <dt className="text-sm font-medium">{row.layer}</dt>
               <dd className="mt-1 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                 <span className="text-ink-muted">
-                  <span className="text-micro text-ink-faint">paper</span>{" "}
-                  {row.paper}
+                  <span className="text-micro text-ink-faint">was</span>{" "}
+                  {row.original}
                 </span>
                 <span className="text-ink-muted">
-                  <span className="text-micro text-ink-faint">here</span>{" "}
+                  <span className="text-micro text-ink-faint">now</span>{" "}
                   {row.demo}
                 </span>
                 <span className="max-w-prose text-ink-faint sm:col-span-2">
