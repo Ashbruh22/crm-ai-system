@@ -102,3 +102,11 @@ data/synthetic/activities.csv
 # Local SQLite database from a containerless run
 demo_local.db
 *.db-journal
+
+# Local scratch and probe scripts kept out of the repo
+app.py
+pipeline.py
+test_phase3.py
+test_probe.py
+test_probe_static.py
+verify_ml.py

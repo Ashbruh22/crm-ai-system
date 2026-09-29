@@ -87,6 +87,11 @@ noisy, has fewer features, and carries none of the firmographic or relationship
 context the real CRM had. A synthetic model matching 0.92 AUC would mean the
 generator had leaked the label, not that the model was good.
 
+`models/` holds result files from individual experiment runs during the original
+research — intermediate evaluations on partial data and earlier pipelines, kept
+as a record of how the work developed. They are not the paper's reported
+results and not the demo's; the two sets above are the ones to read.
+
 **Scoring latency is measured, not quoted.** `artifacts/metrics.json` carries
 `latency_ms.measured: null` until someone runs
 `python training/measure_latency.py --url <service>` against a real deployment.
