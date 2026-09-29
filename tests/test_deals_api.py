@@ -212,7 +212,9 @@ async def test_meta_metrics_are_labelled_synthetic(client):
 
     # Nothing here may present a figure the repo cannot regenerate.
     assert "paper" not in body
-    assert body["latency_ms"]["measured"] is None
+    latency = body["latency_ms"]
+    if latency.get("measured") is not None:
+        assert latency["measured"] > 0 and latency.get("host")
 
 
 async def test_meta_features_exposes_labels_for_the_chart(client):

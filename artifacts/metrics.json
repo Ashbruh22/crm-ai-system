@@ -112,7 +112,32 @@
     }
   ],
   "latency_ms": {
-    "measured": null,
-    "note": "Measured on the hosted deployment in phase 9 and reported in the README. Not yet measured, and no figure is quoted until it is."
+    "measured": 245.27,
+    "measured_at": "2026-09-29",
+    "host": "https://crm-ai-service-k7y7.onrender.com",
+    "server_side_ms": {
+      "p50": 245.27,
+      "p95": 295.92,
+      "min": 242.19,
+      "max": 323.63,
+      "n": 25
+    },
+    "round_trip_ms": {
+      "p50": 563.89,
+      "p95": 622.58,
+      "min": 537.33,
+      "max": 640.1,
+      "n": 25
+    },
+    "per_stage_p50_ms": {
+      "features": 5.17,
+      "xgb": 2.1,
+      "lstm": 0.27,
+      "shap": 0.83,
+      "nba": 0.08,
+      "cache": 235.97
+    },
+    "cold_start_ms": 555.0,
+    "note": "Median server-side scoring time on the hosted free tier, cache bypassed. Round trip includes network."
   }
 }

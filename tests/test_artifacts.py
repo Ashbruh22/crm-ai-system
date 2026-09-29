@@ -147,8 +147,13 @@ def test_metrics_are_labelled_synthetic_and_plausible():
     assert 0.0 < demo["win_probability"]["auc_roc"] < 1.0
     assert demo["days_to_close"]["mae_days"] > 0
 
-    # Latency must stay unset until it is actually measured on the deploy.
-    assert metrics["latency_ms"]["measured"] is None
+    # A latency figure may appear only once it has actually been observed, and
+    # must say where. Null is fine; a number with no provenance is not.
+    latency = metrics["latency_ms"]
+    if latency.get("measured") is not None:
+        assert latency["measured"] > 0
+        assert latency.get("host"), "a measured latency must name the host"
+        assert latency.get("measured_at"), "a measured latency must be dated"
 
 
 def test_days_to_close_model_beats_the_mean_baseline():

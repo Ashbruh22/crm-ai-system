@@ -328,3 +328,44 @@ def test_as_of_is_floored_to_the_minute():
     assert (moment - floored).total_seconds() < AS_OF_QUANTUM_SECONDS
     # Two instants in the same minute quantise to the same value.
     assert quantize_as_of(moment.replace(second=3)) == floored
+
+
+async def test_the_cache_write_does_not_block_the_response(client, session, fake_redis):
+    """A score must not wait on the cache being written for the next caller.
+
+    Measured against a managed Redis in another region, the write was ~118 ms
+    against ~8 ms of actual model work. Nothing reads its result, and a failed
+    write only costs the next request a miss.
+    """
+    import asyncio
+
+    from app.models.registry import registry
+    from app.services import scoring
+
+    registry.load()
+    await seed_deal(session, activities=ENGAGED)
+
+    slow_writes = []
+
+    async def slow_set(redis, key, result):
+        slow_writes.append(key)
+        await asyncio.sleep(0.4)
+
+    original = scoring._cache_set
+    scoring._cache_set = slow_set
+    try:
+        started = asyncio.get_event_loop().time()
+        result = await scoring.score_deal(
+            session, fake_redis, registry, "LIVE-0001", bypass_cache=True
+        )
+        elapsed = asyncio.get_event_loop().time() - started
+    finally:
+        scoring._cache_set = original
+
+    assert slow_writes, "the cache write was never attempted"
+    # It was spawned, not awaited: the 400 ms write cannot be inside this.
+    assert elapsed < 0.35, f"scoring waited for the cache write ({elapsed:.2f}s)"
+    assert result.win_prob > 0
+
+    # Let the background task finish so it does not leak into the next test.
+    await asyncio.sleep(0.5)

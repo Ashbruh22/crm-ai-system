@@ -20,6 +20,7 @@ README quotes a measured figure or none at all.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import time
@@ -347,7 +348,13 @@ async def score_deal(
         await sync_actions(session, deal_id, recommendations, score_id=score_row.id)
 
     if redis is not None:
-        await _cache_set(redis, key, result)
+        # Fire and forget. The caller is waiting on a score, not on the cache
+        # being warm for the next caller, and against a managed Redis in
+        # another region that write was measured at ~118 ms -- half the entire
+        # response time for ~8 ms of actual model work. Nothing reads the
+        # result of this, and a failed write only costs the next request a
+        # cache miss.
+        _spawn(_cache_set(redis, key, result))
     timer.stage("cache")
 
     result.latency_ms = timer.total()
@@ -358,6 +365,23 @@ async def score_deal(
         await session.commit()
 
     return result
+
+
+#: Strong references to in-flight background writes. asyncio only holds a weak
+#: reference to a task, so without this the garbage collector can cancel one
+#: mid-flight and the write silently never lands.
+_background: set = set()
+
+
+def _spawn(coro) -> None:
+    """Run a coroutine without waiting for it."""
+    try:
+        task = asyncio.ensure_future(coro)
+    except RuntimeError:  # no running loop (sync context in a test)
+        coro.close()
+        return
+    _background.add(task)
+    task.add_done_callback(_background.discard)
 
 
 async def _cache_get(redis, key: str) -> dict | None:
