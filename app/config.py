@@ -62,6 +62,42 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
+    @field_validator("REDIS_URL")
+    @classmethod
+    def _redis_scheme(cls, v: str) -> str:
+        """Reject a malformed REDIS_URL at startup, with the likely cause named.
+
+        Upstash presents its credential as a ready-to-run shell command
+        (`redis-cli --tls -u rediss://...`), and pasting that whole line into a
+        deployment's environment is an easy mistake — redis-py then raises a
+        bare "URL must specify one of the following schemes" from deep inside a
+        connection pool, forty frames below anything recognisable. Catching it
+        here says what to do instead.
+        """
+        v = v.strip()
+
+        if v.startswith("redis-cli"):
+            raise ValueError(
+                "REDIS_URL looks like a shell command, not a URL. Upstash shows "
+                "the credential as `redis-cli --tls -u rediss://...` — use only "
+                "the rediss://... part, starting at the scheme."
+            )
+
+        if not v.startswith(("redis://", "rediss://", "unix://")):
+            raise ValueError(
+                f"REDIS_URL must start with rediss:// (TLS), redis:// or "
+                f"unix://. Got {v[:32]!r}..."
+            )
+
+        # Upstash and most managed hosts require TLS; plain redis:// against
+        # them fails at connect time with a bare ConnectionError.
+        if ".upstash.io" in v and v.startswith("redis://"):
+            raise ValueError(
+                "Upstash requires TLS: use rediss:// (two s's), not redis://."
+            )
+
+        return v
+
     @field_validator("DATABASE_URL")
     @classmethod
     def _async_driver(cls, v: str) -> str:
