@@ -33,9 +33,11 @@ export function Pipeline() {
     limit: 100,
   });
 
-  const items = data?.items ?? [];
-
+  // Derived inside the memo, not above it: `data?.items ?? []` produces a new
+  // array identity on every render, so depending on it meant the summary was
+  // recomputed every time regardless.
   const summary = useMemo(() => {
+    const items = data?.items ?? [];
     const scored = items.filter((d) => d.score);
     const weighted = scored.reduce(
       (sum, d) => sum + d.deal_size * (d.score?.win_prob ?? 0),
@@ -47,7 +49,9 @@ export function Pipeline() {
         (d.top_action.priority === "CRITICAL" || d.top_action.priority === "HIGH"),
     ).length;
     return { open: items.length, weighted, needsAttention, scored: scored.length };
-  }, [items]);
+  }, [data]);
+
+  const items = data?.items ?? [];
 
   if (isLoading) return <WakingNotice />;
 
