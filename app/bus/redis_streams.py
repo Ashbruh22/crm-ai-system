@@ -60,10 +60,22 @@ class RedisStreamsBus(MessageBus):
         await self.assert_streams_supported()
 
     async def assert_streams_supported(self) -> str:
-        """Raise StreamsUnsupported unless the server is Redis >= 5."""
+        """Raise StreamsUnsupported unless the server is Redis >= 5.
+
+        A server that refuses INFO but otherwise works is fine — some managed
+        hosts restrict it — so that case returns "unknown" and lets startup
+        continue. A server we cannot reach or authenticate against is not fine,
+        and those errors propagate: swallowing them reported a healthy bus over
+        a Redis that was rejecting every command, which is precisely the
+        misleading signal this check exists to prevent.
+        """
+        from redis.exceptions import AuthenticationError, ConnectionError, TimeoutError
+
         try:
             info = await self.redis.info("server")
-        except Exception:  # noqa: BLE001 - some managed hosts restrict INFO
+        except (AuthenticationError, ConnectionError, TimeoutError):
+            raise
+        except Exception:  # noqa: BLE001 - INFO restricted, but the server works
             return "unknown"
 
         version = str(info.get("redis_version", "")) or "unknown"

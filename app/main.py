@@ -220,6 +220,10 @@ def _register_health(app: FastAPI) -> None:
         bus_error = getattr(app.state, "bus_error", None)
         if bus_error:
             bus_status = {"available": False, "error": bus_error}
+        elif redis_status != "ok":
+            # The bus rides on the same connection. Reporting it available
+            # while Redis is refusing commands is worse than reporting nothing.
+            bus_status = {"available": False, "error": f"redis {redis_status}"}
         elif bus is not None:
             try:
                 bus_status = {

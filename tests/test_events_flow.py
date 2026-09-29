@@ -440,3 +440,41 @@ async def test_restricted_info_does_not_block_startup(fake_redis):
             raise RuntimeError("INFO is disabled")
 
     assert await RedisStreamsBus(NoInfoRedis()).assert_streams_supported() == "unknown"
+
+
+async def test_unreachable_redis_is_not_reported_as_a_working_bus():
+    """A rejected credential must not read as a healthy bus.
+
+    The capability check swallowed every INFO failure so that managed hosts
+    which restrict the command could still boot. That also swallowed
+    authentication errors, so a Redis rejecting every command reported
+    bus.available: true -- exactly the misleading signal the check exists to
+    prevent. Connection and auth failures now propagate.
+    """
+    from redis.exceptions import AuthenticationError
+
+    from app.bus.redis_streams import RedisStreamsBus
+
+    class RejectingRedis:
+        async def ping(self):
+            raise AuthenticationError("invalid username-password pair")
+
+        async def info(self, _section=None):
+            raise AuthenticationError("invalid username-password pair")
+
+    with pytest.raises(AuthenticationError):
+        await RedisStreamsBus(RejectingRedis()).assert_streams_supported()
+
+
+async def test_restricted_info_still_boots():
+    """A host that refuses INFO but otherwise works must not be fatal."""
+    from app.bus.redis_streams import RedisStreamsBus
+
+    class RestrictedRedis:
+        async def ping(self):
+            return True
+
+        async def info(self, _section=None):
+            raise RuntimeError("ERR unknown command 'INFO'")
+
+    assert await RedisStreamsBus(RestrictedRedis()).assert_streams_supported() == "unknown"
