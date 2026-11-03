@@ -10,7 +10,7 @@
 
 services:
   - type: web
-    name: crm-ai-service
+    name: crm-ai-service-v2
     runtime: docker
     plan: free
     region: oregon
