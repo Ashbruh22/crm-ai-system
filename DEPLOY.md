@@ -102,7 +102,7 @@ request then takes 30–60 seconds. The dashboard shows a "waking the model
 service" state rather than a spinner, and the keep-warm workflow reduces how
 often anyone sees it.
 
-**Free Postgres expires.** Render's free database is deleted after 90 days.
+**Free Postgres expires.** Render's free database is deleted 30 days after it is created.
 Nothing in it is precious — it holds generated data and is re-seeded on boot —
 but the service will fail its health check until `DATABASE_URL` points
 somewhere. Create a fresh one and update the variable.
